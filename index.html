@@ -759,7 +759,7 @@ button {
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     background: #fff;
-    padding: 24px 20px 40px;
+    padding: 24px 20px 92px;
     position: relative;
 }
 
@@ -780,6 +780,25 @@ button {
     z-index: 110;
 }
 .ov-close:active { background: rgba(0,0,0,0.12); }
+
+/* 保存图片按钮（悬浮在总览底部） */
+.ov-save-btn {
+    position: fixed;
+    left: 50%;
+    bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    transform: translateX(-50%);
+    padding: 12px 26px;
+    border-radius: 999px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 15px;
+    font-weight: bold;
+    box-shadow: 0 4px 16px rgba(74, 144, 226, 0.42);
+    z-index: 112;
+    white-space: nowrap;
+    transition: transform 0.12s;
+}
+.ov-save-btn:active { transform: translateX(-50%) scale(0.95); }
 
 .ov-head { text-align: center; margin-bottom: 18px; }
 .ov-title {
@@ -937,6 +956,84 @@ button {
     text-align: center;
     font-size: 12px;
     color: #C0C4CC;
+}
+
+/* ==========================================================================
+   7.1 成绩单图片预览 / 保存
+   ========================================================================== */
+.modal.img-preview-modal {
+    background: rgba(0,0,0,0.94);
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    z-index: 130;
+    padding-top: env(safe-area-inset-top, 0px);
+}
+.modal.img-preview-modal.active { display: flex; }
+
+.img-preview-head {
+    flex: none;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 14px;
+}
+.img-preview-tip {
+    font-size: 13px;
+    color: rgba(255,255,255,0.72);
+}
+.img-preview-close {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.16);
+    color: #fff;
+    font-size: 20px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+}
+.img-preview-close:active { background: rgba(255,255,255,0.28); }
+
+.img-preview-body {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 12px 12px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+}
+.img-preview-body img {
+    width: 100%;
+    max-width: 560px;
+    height: auto;
+    display: block;
+    border-radius: 8px;
+    background: #fff;
+    user-select: auto;
+    -webkit-user-select: auto;
+    -webkit-touch-callout: default;
+}
+
+.img-preview-foot {
+    flex: none;
+    display: flex;
+    gap: 10px;
+    padding: 10px 14px calc(14px + env(safe-area-inset-bottom, 0px));
+    background: rgba(255,255,255,0.06);
+}
+.img-preview-foot .btn-secondary {
+    background: rgba(255,255,255,0.16);
+    color: #fff;
+}
+.img-preview-foot .btn-primary {
+    background: var(--primary);
+    color: #fff;
 }
 
 /* ==========================================================================
@@ -1323,7 +1420,23 @@ button {
 <!-- 弹窗：本次成绩总览（全屏，适合截屏发家长群） -->
 <div class="modal overview-modal" id="overviewModal">
     <button class="ov-close" id="ovClose" type="button">×</button>
+    <button class="ov-save-btn" id="ovSaveBtn" type="button">📷 保存到手机</button>
     <div class="ov-sheet" id="ovSheet"></div>
+</div>
+
+<!-- 弹窗：成绩单图片预览 -->
+<div class="modal img-preview-modal" id="imgPreviewModal">
+    <div class="img-preview-head">
+        <span class="img-preview-tip">长按图片可保存到相册</span>
+        <button class="img-preview-close" id="imgPreviewClose" type="button">×</button>
+    </div>
+    <div class="img-preview-body">
+        <img id="imgPreviewImg" alt="班级成绩单">
+    </div>
+    <div class="img-preview-foot">
+        <button class="btn-secondary" id="imgPreviewCancel" type="button">关闭</button>
+        <button class="btn-primary" id="imgPreviewSave" type="button">保存图片</button>
+    </div>
 </div>
 
 <!-- 弹窗：单个学生成绩分析 -->
@@ -1369,12 +1482,12 @@ function todayStr() {
 
 /** 轻提示 */
 let toastTimer = null;
-function toast(msg) {
+function toast(msg, duration) {
     const el = $('#toast');
     el.textContent = msg;
     el.classList.add('show');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
+    toastTimer = setTimeout(() => el.classList.remove('show'), duration || 2000);
 }
 
 /** 唯一 ID */
@@ -1850,7 +1963,7 @@ function getOverviewRanks(customSort) {
     });
 
     const validList = scoredList.filter(s => isValidScore(s._displayScore));
-    
+
     validList.sort((a, b) => {
         if (b._displayScore !== a._displayScore) return b._displayScore - a._displayScore;
         return String(a.sid).localeCompare(String(b.sid), 'zh-CN', { numeric: true });
@@ -2313,7 +2426,7 @@ function showOverview() {
     }
 
     const stat    = getStat();
-    
+
     let displayList = [];
     let rankMap = {};
     let allScored = [];
@@ -2322,7 +2435,7 @@ function showOverview() {
         const res = getOverviewRanks(overviewCustomSort);
         rankMap = res.rankMap;
         allScored = res.scoredList;
-        
+
         displayList = allScored.slice();
         if (overviewSortBy === 'sid') {
             displayList.sort((a, b) => String(a.sid).localeCompare(String(b.sid), 'zh-CN', { numeric: true }));
@@ -2359,7 +2472,7 @@ function showOverview() {
             else if (sc >= maxScore * 0.7) dist[2].count++;
             else if (sc >= maxScore * 0.6) dist[3].count++;
             else dist[4].count++;
-            
+
             if (sc === maxScore) perfectCount++;
         }
     });
@@ -2371,8 +2484,8 @@ function showOverview() {
     html += '  <div class="ov-title">班级成绩单</div>';
     html += '  <div class="ov-sub">' + esc(clsName) + ' · ' + todayStr() + ' · ' + getSubjectName(currentSubject) +
             ' · 已录 ' + scored.length + ' / ' + state.students.length + ' 人</div>';
-            
-    html += '  <div style="display:flex; justify-content:center; margin-top:14px; flex-wrap:wrap; gap:8px;">';
+
+    html += '  <div id="ovSortRow" style="display:flex; justify-content:center; margin-top:14px; flex-wrap:wrap; gap:8px;">';
     html += '    <div class="sort-tabs" id="ovSortTabs" style="background:#FAFBFC; border:1px solid #E2E6ED;">';
     html += '      <button class="sort-tab' + (overviewSortBy === 'score' ? ' active' : '') + '" data-osort="score" type="button">按分数</button>';
     html += '      <button class="sort-tab' + (overviewSortBy === 'sid' ? ' active' : '') + '" data-osort="sid" type="button">按学号</button>';
@@ -2387,7 +2500,7 @@ function showOverview() {
     html += '      <option value="english"' + (overviewCustomSort === 'english' ? ' selected' : '') + '>英语成绩</option>';
     html += '      <option value="science"' + (overviewCustomSort === 'science' ? ' selected' : '') + '>科学成绩</option>';
     html += '    </select>';
-    
+
     html += '  </div>';
     html += '</div>';
 
@@ -2407,7 +2520,7 @@ function showOverview() {
         const score   = s._displayScore;
         const rank    = rankMap[s.id];
         const rankCls = rank === 1 ? 'r1' : (rank === 2 ? 'r2' : (rank === 3 ? 'r3' : ''));
-        
+
         let cls = 's5';
         if (score !== null) {
             if (score >= maxScore * 0.9) cls = 's1';
@@ -2482,6 +2595,218 @@ function showOverview() {
 }
 
 /* ==========================================================================
+   9.1 总览保存为图片（新增）
+   ========================================================================== */
+
+/** 动态加载 html2canvas（带多个 CDN 备份） */
+let html2canvasPromise = null;
+function loadHtml2Canvas() {
+    if (window.html2canvas) return Promise.resolve(window.html2canvas);
+    if (html2canvasPromise) return html2canvasPromise;
+
+    html2canvasPromise = new Promise((resolve, reject) => {
+        const urls = [
+            'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js',
+            'https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js',
+            'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'
+        ];
+        let idx = 0;
+
+        function tryLoad() {
+            if (idx >= urls.length) {
+                html2canvasPromise = null;
+                reject(new Error('html2canvas load failed'));
+                return;
+            }
+            const script = document.createElement('script');
+            script.src = urls[idx++];
+            script.async = true;
+            script.onload = function () {
+                if (window.html2canvas) resolve(window.html2canvas);
+                else tryLoad();
+            };
+            script.onerror = tryLoad;
+            document.head.appendChild(script);
+        }
+        tryLoad();
+    });
+
+    return html2canvasPromise;
+}
+
+/** 把总览内容离屏克隆并渲染成 canvas */
+function buildOverviewCanvas() {
+    return loadHtml2Canvas().then(function (h2c) {
+        const sheet = $('#ovSheet');
+        const width = Math.round(sheet.clientWidth) || document.documentElement.clientWidth || 375;
+
+        // 离屏克隆，不影响用户当前界面
+        const clone = document.createElement('div');
+        clone.style.cssText =
+            'position:fixed;left:-99999px;top:0;' +
+            'width:' + width + 'px;' +
+            'background:#fff;' +
+            'padding:24px 20px 36px;' +
+            'box-sizing:border-box;';
+        clone.innerHTML = sheet.innerHTML;
+
+        // 去掉排序控件和底部提示（不属于成绩单内容）
+        const sortRow = clone.querySelector('#ovSortRow');
+        if (sortRow && sortRow.parentNode) sortRow.parentNode.removeChild(sortRow);
+        Array.prototype.forEach.call(clone.querySelectorAll('.ov-tip'), function (el) {
+            if (el.parentNode) el.parentNode.removeChild(el);
+        });
+
+        document.body.appendChild(clone);
+
+        // 等待一次布局
+        return new Promise(function (resolve) {
+            requestAnimationFrame(function () {
+                setTimeout(resolve, 30);
+            });
+        }).then(function () {
+            const height = Math.max(1, Math.ceil(clone.offsetHeight));
+
+            // 计算合适的缩放倍率，避免超出 canvas 像素上限
+            let scale = Math.min(3, Math.max(2, window.devicePixelRatio || 2));
+            const maxPixels = 16e6;
+            while (scale > 1 && width * height * scale * scale > maxPixels) {
+                scale -= 0.25;
+            }
+            if (scale < 1) scale = 1;
+
+            return h2c(clone, {
+                backgroundColor: '#ffffff',
+                scale: scale,
+                useCORS: true,
+                logging: false,
+                width: width,
+                height: height,
+                windowWidth: width,
+                windowHeight: height,
+                scrollX: 0,
+                scrollY: 0
+            });
+        }).then(function (canvas) {
+            if (clone.parentNode) clone.parentNode.removeChild(clone);
+            return canvas;
+        }, function (err) {
+            if (clone.parentNode) clone.parentNode.removeChild(clone);
+            throw err;
+        });
+    });
+}
+
+let lastOverviewDataUrl = '';
+let isBuildingImage = false;
+
+/** 点击「保存到手机」 */
+function saveOverviewImage() {
+    if (isBuildingImage) return;
+
+    const sheet = $('#ovSheet');
+    if (!sheet || !sheet.innerHTML.trim()) {
+        toast('暂无可保存的内容');
+        return;
+    }
+
+    isBuildingImage = true;
+    toast('正在生成图片…', 8000);
+
+    buildOverviewCanvas().then(function (canvas) {
+        let dataUrl = '';
+        try {
+            dataUrl = canvas.toDataURL('image/png');
+        } catch (e) {
+            dataUrl = '';
+        }
+        if (!dataUrl || dataUrl.length < 100) throw new Error('empty image');
+
+        lastOverviewDataUrl = dataUrl;
+        $('#imgPreviewImg').src = dataUrl;
+        openModal('imgPreviewModal');
+        toast('图片已生成', 1200);
+    }).catch(function () {
+        toast('图片生成失败，请检查网络后重试');
+    }).then(function () {
+        isBuildingImage = false;
+    });
+}
+
+/** dataURL 转 Blob */
+function dataUrlToBlob(dataUrl) {
+    try {
+        const parts = dataUrl.split(',');
+        const mimeMatch = parts[0].match(/:(.*?);/);
+        const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+        const bin = atob(parts[1]);
+        const len = bin.length;
+        const arr = new Uint8Array(len);
+        for (let i = 0; i < len; i++) arr[i] = bin.charCodeAt(i);
+        return new Blob([arr], { type: mime });
+    } catch (e) {
+        return null;
+    }
+}
+
+/** 兜底下载图片 */
+function fallbackDownloadImage(src, filename) {
+    try {
+        const url = (typeof src === 'string') ? src : URL.createObjectURL(src);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.rel = 'noopener';
+        a.style.cssText = 'position:fixed;left:-9999px;top:0;';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function () {
+            try { document.body.removeChild(a); } catch (e) {}
+            if (typeof src !== 'string') {
+                try { URL.revokeObjectURL(url); } catch (e) {}
+            }
+        }, 5000);
+        toast('已开始保存，若未成功请长按图片保存');
+    } catch (e) {
+        toast('请长按图片保存到相册');
+    }
+}
+
+/** 预览层里的「保存图片」 */
+function savePreviewImage() {
+    const dataUrl = lastOverviewDataUrl || $('#imgPreviewImg').src;
+    if (!dataUrl) {
+        toast('图片还未生成');
+        return;
+    }
+
+    const clsName = curClass() ? curClass().name : '班级';
+    const filename = clsName + '_' + getSubjectName(currentSubject) + '_成绩单_' + todayStr() + '.png';
+
+    const blob = dataUrlToBlob(dataUrl);
+
+    // 1) 优先系统分享面板（可直接「存储图像」/ 发送到微信）
+    if (blob && navigator.share && navigator.canShare) {
+        try {
+            const file = new File([blob], filename, { type: 'image/png' });
+            if (navigator.canShare({ files: [file] })) {
+                navigator.share({ files: [file], title: '班级成绩单' })
+                    .then(function () {})
+                    .catch(function (err) {
+                        if (err && err.name === 'AbortError') return;
+                        fallbackDownloadImage(blob, filename);
+                    });
+                return;
+            }
+        } catch (e) {}
+    }
+
+    // 2) 普通下载
+    if (blob) fallbackDownloadImage(blob, filename);
+    else fallbackDownloadImage(dataUrl, filename);
+}
+
+/* ==========================================================================
    10. 单个学生成绩分析
    ========================================================================== */
 function showStudentAnalysis(id) {
@@ -2508,20 +2833,20 @@ function showStudentAnalysis(id) {
     const trend = [];
     const rankTrend = [];
     const reversedHistory = state.history.slice().reverse();
-    
+
     reversedHistory.forEach(h => {
         const records = h.records || [];
         const rec = records.find(r => r.name === stu.name);
         const sc = rec && rec.scores ? rec.scores[currentSubject] : null;
-        
+
         if (isValidScore(sc)) {
             trend.push({ date: h.date || '', title: h.title || '', score: sc });
-            
+
             const validScores = records
                 .map(r => ({ name: r.name, score: r.scores ? r.scores[currentSubject] : null }))
                 .filter(r => isValidScore(r.score))
                 .sort((a, b) => b.score - a.score);
-            
+
             let rnk = 1;
             let prev = null, prevRank = 0;
             for (let i = 0; i < validScores.length; i++) {
@@ -2534,7 +2859,7 @@ function showStudentAnalysis(id) {
                 }
                 if (validScores[i].name === stu.name) break;
             }
-            
+
             rankTrend.push({
                 date: h.date,
                 title: h.title || '记录',
@@ -2599,45 +2924,45 @@ function showStudentAnalysis(id) {
         const padX = 36, padY = 20;
         const innerW = svgW - padX * 2;
         const innerH = svgH - padY - 20;
-        
+
         const maxRank = Math.max.apply(null, rankTrend.map(t => t.total).concat([10]));
-        
+
         let pts = rankTrend.map((t, i) => {
             const x = rankTrend.length === 1 ? padX + innerW / 2 : padX + (i / (rankTrend.length - 1)) * innerW;
             const y = padY + ((t.rank - 1) / (maxRank - 1 || 1)) * innerH;
             return Object.assign({ x: x, y: y }, t);
         });
-        
+
         let pathD = '';
         pts.forEach((p, i) => {
             if (i === 0) pathD += 'M ' + p.x + ' ' + p.y;
             else pathD += ' L ' + p.x + ' ' + p.y;
         });
-        
+
         let areaD = 'M ' + pts[0].x + ' ' + (padY + innerH) + ' ';
         pts.forEach(p => { areaD += 'L ' + p.x + ' ' + p.y + ' '; });
         areaD += 'L ' + pts[pts.length - 1].x + ' ' + (padY + innerH) + ' Z';
-        
+
         let svgHtml = '<svg class="ana-rank-chart" viewBox="0 0 ' + svgW + ' ' + svgH + '" preserveAspectRatio="xMidYMid meet" style="width: ' + svgW + 'px; max-width: 100%;">';
-        
+
         for (let i = 0; i <= 2; i++) {
             const y = padY + (i / 2) * innerH;
             svgHtml += '<line x1="' + padX + '" y1="' + y + '" x2="' + (svgW - padX) + '" y2="' + y + '" stroke="#E2E6ED" stroke-width="1" stroke-dasharray="3" />';
             const rankLabel = Math.round(1 + (i / 2) * (maxRank - 1));
             svgHtml += '<text x="' + (padX - 6) + '" y="' + (y + 4) + '" font-size="10" fill="#999" text-anchor="end">第' + rankLabel + '</text>';
         }
-        
+
         svgHtml += '<path d="' + areaD + '" fill="rgba(255, 149, 0, 0.1)" />';
         svgHtml += '<path d="' + pathD + '" fill="none" stroke="#FF9500" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />';
-        
+
         pts.forEach(p => {
             svgHtml += '<circle cx="' + p.x + '" cy="' + p.y + '" r="4" fill="#fff" stroke="#FF9500" stroke-width="2" />';
             svgHtml += '<text x="' + p.x + '" y="' + (p.y - 8) + '" font-size="11" font-weight="bold" fill="#FF9500" text-anchor="middle">' + p.rank + '</text>';
             svgHtml += '<text x="' + p.x + '" y="' + (svgH - 4) + '" font-size="10" fill="#999" text-anchor="middle">' + esc((p.date || '').slice(5)) + '</text>';
         });
-        
+
         svgHtml += '</svg>';
-        
+
         html += '<div class="ana-rank-chart-wrap">';
         html += svgHtml;
         html += '</div>';
@@ -2669,12 +2994,12 @@ function renderStatsModal() {
 
     const sorted = sortStudents(state.students, statsSortBy);
     const rankMap = getRankMap();
-    
+
     const viewStudents = sorted.map(s => ({
-        id: s.id, sid: s.sid, name: s.name, 
+        id: s.id, sid: s.sid, name: s.name,
         score: s.scores ? s.scores[currentSubject] : null
     }));
-    
+
     renderScoreList($('#allScoreList'), viewStudents, rankMap, false, state.passLine);
 
     const fl = $('#failList');
@@ -2862,6 +3187,12 @@ document.addEventListener('click', e => {
 
 $('#topTitle').addEventListener('click', showOverview);
 $('#ovClose').addEventListener('click', () => closeModal('overviewModal'));
+
+/* ---------- 13.6.1 保存总览为图片 ---------- */
+$('#ovSaveBtn').addEventListener('click', saveOverviewImage);
+$('#imgPreviewClose').addEventListener('click', () => closeModal('imgPreviewModal'));
+$('#imgPreviewCancel').addEventListener('click', () => closeModal('imgPreviewModal'));
+$('#imgPreviewSave').addEventListener('click', savePreviewImage);
 
 /* ---------- 13.7 本次成绩总览 ---------- */
 $('#menuOverview').addEventListener('click', () => {
