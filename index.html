@@ -65,20 +65,50 @@ button {
     background: #fff;
     display: flex;
     align-items: center;
-    padding: 0 12px;
-    gap: 10px;
+    padding: 0 10px;
+    gap: 8px;
     box-shadow: 0 1px 4px rgba(0,0,0,0.05);
     z-index: 10;
+}
+/* 班级切换按钮 */
+.btn-class {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    background: #F0F2F5;
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: bold;
+    padding: 8px 7px;
+    border-radius: 8px;
+    max-width: 72px;
+    flex: none;
+    transition: background 0.15s;
+}
+.btn-class:active { background: #E2E6ED; }
+.btn-class .cls-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 44px;
+}
+.btn-class .cls-arrow {
+    font-size: 9px;
+    color: #999;
+    flex: none;
+    line-height: 1;
 }
 .btn-start {
     background: var(--primary);
     color: #fff;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: bold;
-    padding: 8px 16px;
+    padding: 8px 12px;
     border-radius: 8px;
     transition: all 0.2s;
     white-space: nowrap;
+    flex: none;
 }
 .btn-start.active {
     background: var(--danger);
@@ -86,10 +116,11 @@ button {
 .btn-undo {
     background: #F0F2F5;
     color: var(--ink);
-    font-size: 14px;
+    font-size: 13px;
     font-weight: bold;
-    padding: 8px 12px;
+    padding: 8px 10px;
     border-radius: 8px;
+    flex: none;
 }
 .btn-undo:active { background: #E2E6ED; }
 .topbar-title {
@@ -102,11 +133,13 @@ button {
     overflow: hidden;
     text-overflow: ellipsis;
     cursor: pointer;      /* 点击标题可打开成绩总览 */
+    min-width: 0;
 }
 .btn-menu {
     font-size: 20px;
     color: var(--ink-soft);
-    padding: 4px 8px;
+    padding: 4px 6px;
+    flex: none;
 }
 
 /* 新增：学科切换栏 */
@@ -592,6 +625,63 @@ button {
 .his-del { background: #FFEBE9; color: var(--danger); }
 .his-del:active { background: #FFD5D1; }
 
+/* 班级列表 */
+.class-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    border-radius: 10px;
+    background: #FAFBFC;
+    margin-bottom: 8px;
+    border: 1.5px solid transparent;
+}
+.class-row.current {
+    background: var(--primary-soft);
+    border-color: #C9E0F5;
+}
+.class-row-main {
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+}
+.class-row-name {
+    font-size: 15px;
+    font-weight: bold;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.cls-cur-tag {
+    font-size: 10px;
+    font-weight: bold;
+    color: #fff;
+    background: var(--primary);
+    padding: 1px 6px;
+    border-radius: 6px;
+    flex: none;
+}
+.class-row-sub {
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-top: 3px;
+}
+.class-act {
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: bold;
+    flex: none;
+}
+.class-act.rename { background: #E6F0FA; color: var(--primary); }
+.class-act.rename:active { background: #D0E4F7; }
+.class-act.del { background: #FFEBE9; color: var(--danger); }
+.class-act.del:active { background: #FFD5D1; }
+
 /* 表单 */
 .form-group { margin-bottom: 16px; }
 .form-group label { display: block; font-size: 14px; color: var(--ink-soft); margin-bottom: 6px; }
@@ -1009,6 +1099,10 @@ button {
 
 <!-- 顶部栏 -->
 <header class="topbar">
+    <button class="btn-class" id="btnClass" type="button">
+        <span class="cls-name" id="classBtnName">一班</span>
+        <span class="cls-arrow">▾</span>
+    </button>
     <button class="btn-start" id="btnStart">开始登分</button>
     <button class="btn-undo" id="btnUndo">撤销</button>
     <div class="topbar-title" id="topTitle">登分助手</div>
@@ -1056,8 +1150,49 @@ button {
             <div class="menu-item" id="menuSave">💾 保存本次记录</div>
             <div class="menu-item" id="menuHistory">🕘 历史记录</div>
             <div class="menu-item" id="menuExport">📤 导出成绩表格（CSV）</div>
+            <div class="menu-item" id="menuClassManage">🏫 班级管理（切换/新建）</div>
             <div class="menu-item" id="menuRoster">👥 修改名单</div>
             <div class="menu-item danger" id="menuClear">⚠️ 清空当前学科分数</div>
+        </div>
+    </div>
+</div>
+
+<!-- 弹窗：班级管理 -->
+<div class="modal" id="classModal">
+    <div class="modal-card">
+        <div class="modal-head">
+            <h3>班级管理</h3>
+            <button class="x" data-close="classModal">×</button>
+        </div>
+        <div class="modal-body">
+            <p style="font-size:13px; color:#999; line-height:1.7; margin-bottom:12px;">
+                点击班级名称即可切换。每个班级的名单、成绩和历史记录相互独立。
+            </p>
+            <div id="classList"></div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-secondary" data-close="classModal">关闭</button>
+            <button class="btn-primary" id="btnAddClass">新建班级</button>
+        </div>
+    </div>
+</div>
+
+<!-- 弹窗：通用输入 -->
+<div class="modal" id="inputModal" style="z-index: 110;">
+    <div class="modal-card">
+        <div class="modal-head">
+            <h3 id="inputTitle">输入</h3>
+            <button class="x" data-close="inputModal">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label id="inputLabel">名称</label>
+                <input type="text" id="inputValue" autocomplete="off">
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-secondary" data-close="inputModal">取消</button>
+            <button class="btn-primary" id="btnInputOk">确定</button>
         </div>
     </div>
 </div>
@@ -1170,7 +1305,7 @@ button {
         <div class="modal-body">
             <p style="font-size:13px; color:#999; line-height:1.8; margin-bottom:10px;">
                 每行一个学生，格式为「学号 姓名」或直接输入「姓名」。<br>
-                保存后将 <b style="color:#FF3B30;">完全替换</b> 当前名单，同名学生的各科分数会自动保留。
+                保存后将 <b style="color:#FF3B30;">完全替换</b> 当前班级名单，同名学生的各科分数会自动保留。
             </p>
             <textarea id="rosterTextarea" spellcheck="false" placeholder="01 张三&#10;02 李四&#10;王五"></textarea>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
@@ -1242,6 +1377,11 @@ function toast(msg) {
     toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
 }
 
+/** 唯一 ID */
+function uid(prefix) {
+    return (prefix || 'c') + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
 /* ==========================================================================
    1. 常量与状态
    ========================================================================== */
@@ -1265,10 +1405,22 @@ const DEFAULT_NAMES = [
     '张三', '李四', '王五'
 ];
 
+/** 生成默认学生数组 */
+function makeDefaultStudents() {
+    return DEFAULT_NAMES.map((name, i) => ({
+        id: i + 1,
+        sid: String(i + 1).padStart(2, '0'),
+        name: name,
+        scores: { chinese: null, math: null, english: null, science: null }
+    }));
+}
+
 /** 持久化数据 */
 let state = {
-    students: [],   // [{ id, sid, name, scores: { chinese, math, english, science } }]
-    history: [],    // [{ id, date, title, records: [{sid, name, scores}] }]
+    classes: [],          // [{ id, name, students: [], history: [] }]
+    currentClassId: '',
+    students: [],         // 当前班级的学生（运行时引用）
+    history: [],          // 当前班级的历史（运行时引用）
     passLine: 60
 };
 
@@ -1288,12 +1440,28 @@ let historyDetailSortBy = 'score';
 let currentHistoryItem = null;
 let historyDetailSubject = 'chinese'; // 历史详情选中的学科
 
+/* 通用输入弹窗回调 */
+let inputOkCallback = null;
+
 /* ==========================================================================
-   2. 存储层
+   2. 班级与存储
    ========================================================================== */
+function curClass() {
+    return state.classes.find(c => c.id === state.currentClassId) || state.classes[0];
+}
+
 function save() {
     try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        const c = curClass();
+        if (c) {
+            c.students = state.students;
+            c.history = state.history;
+        }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            classes: state.classes,
+            currentClassId: state.currentClassId,
+            passLine: state.passLine
+        }));
     } catch (e) {}
 }
 
@@ -1302,8 +1470,46 @@ function load() {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (raw) {
             const p = JSON.parse(raw);
+
+            // 新结构：多班级
+            if (p && Array.isArray(p.classes) && p.classes.length) {
+                p.classes.forEach(c => {
+                    if (!c.id) c.id = uid();
+                    if (!c.name) c.name = '班级';
+                    if (!Array.isArray(c.students)) c.students = [];
+                    if (!Array.isArray(c.history)) c.history = [];
+                    c.students.forEach(s => {
+                        if (s.score !== undefined && !s.scores) {
+                            s.scores = { chinese: s.score, math: null, english: null, science: null };
+                            delete s.score;
+                        }
+                    });
+                    c.history.forEach(h => {
+                        if (h.records) {
+                            h.records.forEach(r => {
+                                if (r.score !== undefined && !r.scores) {
+                                    r.scores = { chinese: r.score, math: null, english: null, science: null };
+                                    delete r.score;
+                                }
+                            });
+                        }
+                    });
+                });
+                state.classes = p.classes;
+                state.passLine = (typeof p.passLine === 'number') ? p.passLine : 60;
+
+                let cid = p.currentClassId;
+                if (!state.classes.some(c => c.id === cid)) cid = state.classes[0].id;
+                state.currentClassId = cid;
+
+                const c = curClass();
+                state.students = c.students;
+                state.history = c.history;
+                return;
+            }
+
+            // 旧结构迁移：单班级
             if (p && Array.isArray(p.students) && p.students.length) {
-                // 数据迁移
                 p.students.forEach(s => {
                     if (s.score !== undefined && !s.scores) {
                         s.scores = { chinese: s.score, math: null, english: null, science: null };
@@ -1322,20 +1528,33 @@ function load() {
                         }
                     });
                 }
-                state.students = p.students;
-                state.history  = Array.isArray(p.history) ? p.history : [];
+                const cls = {
+                    id: uid(),
+                    name: '一班',
+                    students: p.students,
+                    history: Array.isArray(p.history) ? p.history : []
+                };
+                state.classes = [cls];
+                state.currentClassId = cls.id;
+                state.students = cls.students;
+                state.history = cls.history;
                 state.passLine = (typeof p.passLine === 'number') ? p.passLine : 60;
                 return;
             }
         }
     } catch (e) {}
 
-    state.students = DEFAULT_NAMES.map((name, i) => ({
-        id: i + 1,
-        sid: String(i + 1).padStart(2, '0'),
-        name: name,
-        scores: { chinese: null, math: null, english: null, science: null }
-    }));
+    // 完全默认
+    const cls = {
+        id: uid(),
+        name: '一班',
+        students: makeDefaultStudents(),
+        history: []
+    };
+    state.classes = [cls];
+    state.currentClassId = cls.id;
+    state.students = cls.students;
+    state.history = cls.history;
     save();
 }
 
@@ -1345,19 +1564,174 @@ function pushUndo() {
 }
 
 /* ==========================================================================
-   3. 派生数据（按当前选中的学科计算）
+   3. 班级操作
+   ========================================================================== */
+function updateClassBtn() {
+    const c = curClass();
+    $('#classBtnName').textContent = c ? c.name : '班级';
+}
+
+function switchClass(id) {
+    if (id === state.currentClassId) {
+        closeModal('classModal');
+        return;
+    }
+    const target = state.classes.find(c => c.id === id);
+    if (!target) return;
+
+    const cur = curClass();
+    if (cur) {
+        cur.students = state.students;
+        cur.history = state.history;
+    }
+
+    state.currentClassId = id;
+    state.students = target.students;
+    state.history = target.history;
+
+    selectedStudentId = null;
+    batchScore = null;
+    batchSelectedIds = [];
+    undoStack = [];
+
+    save();
+    render();
+    updateClassBtn();
+    closeModal('classModal');
+    toast('已切换到「' + target.name + '」');
+}
+
+function renderClassList() {
+    const box = $('#classList');
+    box.innerHTML = '';
+
+    state.classes.forEach(c => {
+        const isCur = c.id === state.currentClassId;
+        const row = document.createElement('div');
+        row.className = 'class-row' + (isCur ? ' current' : '');
+
+        const main = document.createElement('div');
+        main.className = 'class-row-main';
+        main.innerHTML =
+            '<div class="class-row-name">' + esc(c.name) +
+                (isCur ? '<span class="cls-cur-tag">当前</span>' : '') +
+            '</div>' +
+            '<div class="class-row-sub">' + c.students.length + ' 人 · ' +
+                (Array.isArray(c.history) ? c.history.length : 0) + ' 条记录</div>';
+
+        main.addEventListener('click', () => switchClass(c.id));
+
+        const renameBtn = document.createElement('button');
+        renameBtn.className = 'class-act rename';
+        renameBtn.type = 'button';
+        renameBtn.textContent = '重命名';
+        renameBtn.addEventListener('click', e => {
+            e.stopPropagation();
+            renameClass(c.id);
+        });
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'class-act del';
+        delBtn.type = 'button';
+        delBtn.textContent = '删除';
+        delBtn.addEventListener('click', e => {
+            e.stopPropagation();
+            deleteClass(c.id);
+        });
+
+        row.appendChild(main);
+        row.appendChild(renameBtn);
+        row.appendChild(delBtn);
+        box.appendChild(row);
+    });
+}
+
+function addClass() {
+    showInput('新建班级', '班级名称', '班级' + (state.classes.length + 1), name => {
+        const cur = curClass();
+        if (cur) {
+            cur.students = state.students;
+            cur.history = state.history;
+        }
+
+        const cls = {
+            id: uid(),
+            name: name,
+            students: makeDefaultStudents(),
+            history: []
+        };
+        state.classes.push(cls);
+
+        state.currentClassId = cls.id;
+        state.students = cls.students;
+        state.history = cls.history;
+
+        selectedStudentId = null;
+        batchScore = null;
+        batchSelectedIds = [];
+        undoStack = [];
+
+        save();
+        render();
+        updateClassBtn();
+        renderClassList();
+        toast('已创建并切换到「' + name + '」');
+    });
+}
+
+function renameClass(id) {
+    const cls = state.classes.find(c => c.id === id);
+    if (!cls) return;
+    showInput('重命名班级', '班级名称', cls.name, name => {
+        cls.name = name;
+        save();
+        updateClassBtn();
+        renderClassList();
+        toast('已重命名为「' + name + '」');
+    });
+}
+
+function deleteClass(id) {
+    if (state.classes.length <= 1) {
+        toast('至少需要保留一个班级');
+        return;
+    }
+    const cls = state.classes.find(c => c.id === id);
+    if (!cls) return;
+    if (!confirm('确定删除班级「' + cls.name + '」吗？\n该班级的名单、成绩和历史记录将一并删除，且无法恢复。')) return;
+
+    const wasCurrent = (state.currentClassId === id);
+    state.classes = state.classes.filter(c => c.id !== id);
+
+    if (wasCurrent) {
+        state.currentClassId = state.classes[0].id;
+        state.students = state.classes[0].students;
+        state.history = state.classes[0].history;
+        selectedStudentId = null;
+        batchScore = null;
+        batchSelectedIds = [];
+        undoStack = [];
+    }
+
+    save();
+    render();
+    updateClassBtn();
+    renderClassList();
+    toast('已删除班级「' + cls.name + '」');
+}
+
+/* ==========================================================================
+   4. 派生数据（按当前选中的学科计算）
    ========================================================================== */
 
 function isValidScore(v) {
     return v !== null && v !== undefined;
 }
 
-/** 已录入当前学科分数的学生列表 */
 function getScored() {
     return state.students.filter(s => s.scores && isValidScore(s.scores[currentSubject]));
 }
 
-/** 当前学科的排名表 */
 function getRankMap() {
     const sorted = getScored().slice().sort((a, b) => b.scores[currentSubject] - a.scores[currentSubject]);
     const map = {};
@@ -1379,7 +1753,6 @@ function getRankMap() {
     return map;
 }
 
-/** 给一组临时记录计算排名 */
 function getRankMapForRecords(records) {
     const scored = records.filter(r => isValidScore(r.score));
     const sorted = scored.slice().sort((a, b) => b.score - a.score);
@@ -1401,7 +1774,6 @@ function getRankMapForRecords(records) {
     return map;
 }
 
-/** 当前学科的统计数据 */
 function getStat() {
     const scored = getScored();
     if (!scored.length) {
@@ -1422,7 +1794,6 @@ function getStat() {
     };
 }
 
-/** 按指定方式排序学生数组 */
 function sortStudents(arr, sortBy) {
     const out = arr.slice();
 
@@ -1441,7 +1812,6 @@ function sortStudents(arr, sortBy) {
     return out;
 }
 
-/** 按指定方式排序 records */
 function sortRecords(records, sortBy) {
     const out = records.slice();
 
@@ -1460,7 +1830,6 @@ function sortRecords(records, sortBy) {
     return out;
 }
 
-/** 计算总览页面的排名 */
 function getOverviewRanks(customSort) {
     const scoredList = state.students.map(s => {
         let score = null;
@@ -1477,7 +1846,7 @@ function getOverviewRanks(customSort) {
         } else {
             score = s.scores ? s.scores[customSort] : null;
         }
-        return { ...s, _displayScore: score };
+        return Object.assign({}, s, { _displayScore: score });
     });
 
     const validList = scoredList.filter(s => isValidScore(s._displayScore));
@@ -1504,7 +1873,7 @@ function getOverviewRanks(customSort) {
 }
 
 /* ==========================================================================
-   4. 渲染层
+   5. 渲染层
    ========================================================================== */
 function render() {
     const list = $('#studentList');
@@ -1539,7 +1908,6 @@ function render() {
     $('#countScored').textContent = scoredCount;
     $('#countTotal').textContent = state.students.length;
 
-    /* 分数按钮高亮 */
     $$('.score-btn').forEach(btn => {
         btn.classList.remove('active', 'active-half');
         if (batchScore !== null) {
@@ -1552,7 +1920,6 @@ function render() {
         }
     });
 
-    /* 批量底部确认栏 */
     const bar = $('#batchBar');
     if (batchScore !== null && batchSelectedIds.length > 0) {
         bar.classList.add('show');
@@ -1562,7 +1929,6 @@ function render() {
         bar.classList.remove('show');
     }
 
-    /* 右侧面板高亮边框 */
     const panel = $('#scorePanel');
     if (batchScore !== null) {
         panel.classList.add('active-batch');
@@ -1581,13 +1947,11 @@ function initScoreGrid() {
         btn.className = 'score-btn';
         btn.dataset.score = i;
 
-        // 整数部分
         const intSpan = document.createElement('span');
         intSpan.className = 'btn-int';
         intSpan.textContent = i;
         btn.appendChild(intSpan);
 
-        // .5 部分（100 分不提供 .5）
         if (i < 100) {
             const halfSpan = document.createElement('span');
             halfSpan.className = 'btn-half';
@@ -1597,8 +1961,6 @@ function initScoreGrid() {
                 handleScoreClick(i + 0.5);
             });
             btn.appendChild(halfSpan);
-        } else {
-            btn.classList.add('no-half');
         }
 
         if (i >= 90) btn.classList.add('range-1');
@@ -1613,7 +1975,6 @@ function initScoreGrid() {
     grid.appendChild(frag);
 }
 
-/** 渲染成绩列表（通用） */
 function renderScoreList(container, items, rankMap, isRecord, passLine) {
     let html = '';
 
@@ -1643,7 +2004,7 @@ function renderScoreList(container, items, rankMap, isRecord, passLine) {
 }
 
 /* ==========================================================================
-   5. 打分交互逻辑
+   6. 打分交互逻辑
    ========================================================================== */
 function handleStudentClick(id) {
     if (!isStarted) {
@@ -1708,13 +2069,24 @@ function confirmBatch() {
 }
 
 /* ==========================================================================
-   6. 弹窗基础
+   7. 弹窗基础
    ========================================================================== */
 function openModal(id)  { document.getElementById(id).classList.add('active'); }
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 
+function showInput(title, label, defaultValue, cb) {
+    $('#inputTitle').textContent = title;
+    $('#inputLabel').textContent = label;
+    $('#inputValue').value = defaultValue || '';
+    inputOkCallback = cb;
+    openModal('inputModal');
+    setTimeout(() => {
+        try { $('#inputValue').focus(); } catch (e) {}
+    }, 120);
+}
+
 /* ==========================================================================
-   7. CSV 导出（兼容 iOS / 苹果手机）
+   8. 导出（兼容夸克 / iOS 第三方浏览器）
    ========================================================================== */
 function csvEscape(v) {
     const s = String(v == null ? '' : v);
@@ -1724,19 +2096,38 @@ function csvEscape(v) {
     return s;
 }
 
+/** 是否夸克浏览器 */
+function isQuark() {
+    return /Quark/i.test(navigator.userAgent);
+}
+
+/** 是否 iOS 第三方浏览器（夸克、Chrome、QQ、UC 等） */
+function isIOSThirdParty() {
+    const ua = navigator.userAgent;
+    const isIOS = /iPad|iPhone|iPod/.test(ua);
+    const isThirdParty = /CriOS|FxiOS|OPiOS|Quark|QQBrowser|UCBrowser|MicroMessenger|Weibo|DingTalk|Alipay/i.test(ua);
+    return isIOS && isThirdParty;
+}
+
+/**
+ * 通用下载入口：
+ * - 夸克 / iOS 第三方浏览器 → window.open(blobUrl)，引导手动保存
+ * - 其他浏览器 → 标准 a.download
+ */
 function downloadBlob(blob, filename) {
     const url = URL.createObjectURL(blob);
 
-    // 检测是否 iOS 且不支持 a.download 的极老版本
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-    const testA = document.createElement('a');
-    if (isIOS && !('download' in testA)) {
-        window.open(url, '_blank');
-        return;
+    // 夸克 / iOS 第三方浏览器：新窗口打开，手动保存
+    if (isQuark() || isIOSThirdParty()) {
+        window.open(url, '_blank', 'noopener,noreferrer');
+        // 不立即 revoke，给用户留出保存时间
+        setTimeout(() => {
+            try { URL.revokeObjectURL(url); } catch (e) {}
+        }, 60000);
+        return 'manual';
     }
 
+    // 标准下载
     const a = document.createElement('a');
     a.href = url;
     a.download = filename;
@@ -1745,6 +2136,7 @@ function downloadBlob(blob, filename) {
     a.click();
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 2000);
+    return 'direct';
 }
 
 function exportTable(records, filenamePrefix) {
@@ -1765,22 +2157,22 @@ function exportTable(records, filenamePrefix) {
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const filename = filenamePrefix + '.csv';
 
-    // 优先使用 Web Share API（iOS 上体验最好）
+    // 优先尝试 Web Share API（iOS 上体验最好，且夸克通常支持）
     if (navigator.share && navigator.canShare) {
         try {
             const file = new File([blob], filename, { type: 'text/csv' });
             if (navigator.canShare({ files: [file] })) {
                 navigator.share({ files: [file], title: filenamePrefix }).catch(() => {});
-                return;
+                return 'share';
             }
         } catch (e) {}
     }
 
-    downloadBlob(blob, filename);
+    return downloadBlob(blob, filename);
 }
 
 /* ==========================================================================
-   8. 本次成绩总览（全屏 · 适合截屏发家长群）
+   9. 本次成绩总览（全屏 · 适合截屏发家长群）
    ========================================================================== */
 function showOverview() {
     const scored = getScored();
@@ -1800,7 +2192,7 @@ function showOverview() {
         rankMap = res.rankMap;
         allScored = res.scoredList;
         
-        displayList = [...allScored];
+        displayList = allScored.slice();
         if (overviewSortBy === 'sid') {
             displayList.sort((a, b) => String(a.sid).localeCompare(String(b.sid), 'zh-CN', { numeric: true }));
         } else {
@@ -1813,7 +2205,6 @@ function showOverview() {
         allScored = res.scoredList;
     }
 
-    // --- 统计分布 ---
     const isTotal = overviewCustomSort === 'total';
     const maxScore = isTotal ? 400 : 100;
     let dist = [
@@ -1842,11 +2233,13 @@ function showOverview() {
         }
     });
 
+    const clsName = curClass() ? curClass().name : '';
     let html = '';
 
     html += '<div class="ov-head">';
     html += '  <div class="ov-title">班级成绩单</div>';
-    html += '  <div class="ov-sub">' + todayStr() + ' · ' + getSubjectName(currentSubject) + ' · 已录 ' + scored.length + ' / ' + state.students.length + ' 人</div>';
+    html += '  <div class="ov-sub">' + esc(clsName) + ' · ' + todayStr() + ' · ' + getSubjectName(currentSubject) +
+            ' · 已录 ' + scored.length + ' / ' + state.students.length + ' 人</div>';
             
     html += '  <div style="display:flex; justify-content:center; margin-top:14px; flex-wrap:wrap; gap:8px;">';
     html += '    <div class="sort-tabs" id="ovSortTabs" style="background:#FAFBFC; border:1px solid #E2E6ED;">';
@@ -1867,19 +2260,17 @@ function showOverview() {
     html += '  </div>';
     html += '</div>';
 
-    // 6宫格统计
     html += '<div class="ov-stats">';
-    html += `  <div class="ov-stat"><b>${stat.avg.toFixed(1)}</b><span>平均分</span></div>`;
-    html += `  <div class="ov-stat"><b>${stat.max}</b><span>最高分</span></div>`;
-    html += `  <div class="ov-stat"><b>${stat.min}</b><span>最低分</span></div>`;
+    html += '  <div class="ov-stat"><b>' + stat.avg.toFixed(1) + '</b><span>平均分</span></div>';
+    html += '  <div class="ov-stat"><b>' + stat.max + '</b><span>最高分</span></div>';
+    html += '  <div class="ov-stat"><b>' + stat.min + '</b><span>最低分</span></div>';
     const passRate = validCount ? Math.round(stat.pass / validCount * 100) : 0;
     const excRate = validCount ? Math.round(excellentCount / validCount * 100) : 0;
-    html += `  <div class="ov-stat"><b>${passRate}%</b><span>及格率</span></div>`;
-    html += `  <div class="ov-stat"><b>${excRate}%</b><span>优秀率(90%)</span></div>`;
-    html += `  <div class="ov-stat"><b>${perfectCount}</b><span>满分人数</span></div>`;
+    html += '  <div class="ov-stat"><b>' + passRate + '%</b><span>及格率</span></div>';
+    html += '  <div class="ov-stat"><b>' + excRate + '%</b><span>优秀率(90%)</span></div>';
+    html += '  <div class="ov-stat"><b>' + perfectCount + '</b><span>满分人数</span></div>';
     html += '</div>';
 
-    // 紧凑型成绩列表
     html += '<div class="ov-list">';
     displayList.forEach(s => {
         const score   = s._displayScore;
@@ -1903,21 +2294,19 @@ function showOverview() {
     });
     html += '</div>';
 
-    // 底部成绩分布统计
     html += '<div class="ov-foot">';
     html += '  <div class="ov-foot-title">成绩分布（共 ' + validCount + ' 人）</div>';
     html += '  <div class="ov-dist-grid">';
     dist.forEach(d => {
         const pct = validCount ? Math.round(d.count / validCount * 100) : 0;
-        html += `<div class="ov-dist-card" style="background:${d.bg}; color:${d.color};">`;
-        html += `  <div class="ov-dist-num">${d.count}<span>人</span></div>`;
-        html += `  <div class="ov-dist-label">${d.label} (${pct}%)</div>`;
-        html += `</div>`;
+        html += '<div class="ov-dist-card" style="background:' + d.bg + '; color:' + d.color + ';">';
+        html += '  <div class="ov-dist-num">' + d.count + '<span>人</span></div>';
+        html += '  <div class="ov-dist-label">' + d.label + ' (' + pct + '%)</div>';
+        html += '</div>';
     });
     html += '  </div>';
     html += '</div>';
 
-    // 底部未录入名单
     const unscored = allScored.filter(s => s._displayScore === null);
     if (unscored.length) {
         html += '<div class="ov-foot" style="margin-top:16px;">';
@@ -1962,7 +2351,7 @@ function showOverview() {
 }
 
 /* ==========================================================================
-   9. 单个学生成绩分析
+   10. 单个学生成绩分析
    ========================================================================== */
 function showStudentAnalysis(id) {
     const stu = state.students.find(s => s.id === id);
@@ -2080,43 +2469,43 @@ function showStudentAnalysis(id) {
         const innerW = svgW - padX * 2;
         const innerH = svgH - padY - 20;
         
-        const maxRank = Math.max(...rankTrend.map(t => t.total), 10);
+        const maxRank = Math.max.apply(null, rankTrend.map(t => t.total).concat([10]));
         
         let pts = rankTrend.map((t, i) => {
             const x = rankTrend.length === 1 ? padX + innerW / 2 : padX + (i / (rankTrend.length - 1)) * innerW;
             const y = padY + ((t.rank - 1) / (maxRank - 1 || 1)) * innerH;
-            return { x, y, ...t };
+            return Object.assign({ x: x, y: y }, t);
         });
         
         let pathD = '';
         pts.forEach((p, i) => {
-            if (i === 0) pathD += `M ${p.x} ${p.y}`;
-            else pathD += ` L ${p.x} ${p.y}`;
+            if (i === 0) pathD += 'M ' + p.x + ' ' + p.y;
+            else pathD += ' L ' + p.x + ' ' + p.y;
         });
         
-        let areaD = `M ${pts[0].x} ${padY + innerH} `;
-        pts.forEach(p => { areaD += `L ${p.x} ${p.y} `; });
-        areaD += `L ${pts[pts.length-1].x} ${padY + innerH} Z`;
+        let areaD = 'M ' + pts[0].x + ' ' + (padY + innerH) + ' ';
+        pts.forEach(p => { areaD += 'L ' + p.x + ' ' + p.y + ' '; });
+        areaD += 'L ' + pts[pts.length - 1].x + ' ' + (padY + innerH) + ' Z';
         
-        let svgHtml = `<svg class="ana-rank-chart" viewBox="0 0 ${svgW} ${svgH}" preserveAspectRatio="xMidYMid meet" style="width: ${svgW}px; max-width: 100%;">`;
+        let svgHtml = '<svg class="ana-rank-chart" viewBox="0 0 ' + svgW + ' ' + svgH + '" preserveAspectRatio="xMidYMid meet" style="width: ' + svgW + 'px; max-width: 100%;">';
         
         for (let i = 0; i <= 2; i++) {
             const y = padY + (i / 2) * innerH;
-            svgHtml += `<line x1="${padX}" y1="${y}" x2="${svgW - padX}" y2="${y}" stroke="#E2E6ED" stroke-width="1" stroke-dasharray="3" />`;
+            svgHtml += '<line x1="' + padX + '" y1="' + y + '" x2="' + (svgW - padX) + '" y2="' + y + '" stroke="#E2E6ED" stroke-width="1" stroke-dasharray="3" />';
             const rankLabel = Math.round(1 + (i / 2) * (maxRank - 1));
-            svgHtml += `<text x="${padX - 6}" y="${y + 4}" font-size="10" fill="#999" text-anchor="end">第${rankLabel}</text>`;
+            svgHtml += '<text x="' + (padX - 6) + '" y="' + (y + 4) + '" font-size="10" fill="#999" text-anchor="end">第' + rankLabel + '</text>';
         }
         
-        svgHtml += `<path d="${areaD}" fill="rgba(255, 149, 0, 0.1)" />`;
-        svgHtml += `<path d="${pathD}" fill="none" stroke="#FF9500" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />`;
+        svgHtml += '<path d="' + areaD + '" fill="rgba(255, 149, 0, 0.1)" />';
+        svgHtml += '<path d="' + pathD + '" fill="none" stroke="#FF9500" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />';
         
         pts.forEach(p => {
-            svgHtml += `<circle cx="${p.x}" cy="${p.y}" r="4" fill="#fff" stroke="#FF9500" stroke-width="2" />`;
-            svgHtml += `<text x="${p.x}" y="${p.y - 8}" font-size="11" font-weight="bold" fill="#FF9500" text-anchor="middle">${p.rank}</text>`;
-            svgHtml += `<text x="${p.x}" y="${svgH - 4}" font-size="10" fill="#999" text-anchor="middle">${(p.date || '').slice(5)}</text>`;
+            svgHtml += '<circle cx="' + p.x + '" cy="' + p.y + '" r="4" fill="#fff" stroke="#FF9500" stroke-width="2" />';
+            svgHtml += '<text x="' + p.x + '" y="' + (p.y - 8) + '" font-size="11" font-weight="bold" fill="#FF9500" text-anchor="middle">' + p.rank + '</text>';
+            svgHtml += '<text x="' + p.x + '" y="' + (svgH - 4) + '" font-size="10" fill="#999" text-anchor="middle">' + esc((p.date || '').slice(5)) + '</text>';
         });
         
-        svgHtml += `</svg>`;
+        svgHtml += '</svg>';
         
         html += '<div class="ana-rank-chart-wrap">';
         html += svgHtml;
@@ -2129,7 +2518,7 @@ function showStudentAnalysis(id) {
 }
 
 /* ==========================================================================
-   10. 成绩统计弹窗
+   11. 成绩统计弹窗
    ========================================================================== */
 function renderStatsModal() {
     const stat  = getStat();
@@ -2172,7 +2561,7 @@ function renderStatsModal() {
 }
 
 /* ==========================================================================
-   11. 历史记录详情弹窗
+   12. 历史记录详情弹窗
    ========================================================================== */
 function showHistoryDetail(id) {
     const h = state.history.find(item => item.id === id);
@@ -2259,10 +2648,38 @@ function renderHistoryDetail() {
 }
 
 /* ==========================================================================
-   12. 事件绑定与初始化
+   13. 事件绑定与初始化
    ========================================================================== */
 
-/* ---------- 12.1 学科切换 ---------- */
+/* ---------- 13.1 班级切换 ---------- */
+$('#btnClass').addEventListener('click', () => {
+    renderClassList();
+    openModal('classModal');
+});
+
+$('#btnAddClass').addEventListener('click', addClass);
+
+/* ---------- 13.2 通用输入弹窗 ---------- */
+$('#btnInputOk').addEventListener('click', () => {
+    const v = $('#inputValue').value.trim();
+    if (!v) {
+        toast('内容不能为空');
+        return;
+    }
+    const cb = inputOkCallback;
+    inputOkCallback = null;
+    closeModal('inputModal');
+    if (cb) cb(v);
+});
+
+$('#inputValue').addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        $('#btnInputOk').click();
+    }
+});
+
+/* ---------- 13.3 学科切换 ---------- */
 $$('.subj-tab').forEach(btn => {
     btn.addEventListener('click', () => {
         currentSubject = btn.dataset.subj;
@@ -2273,7 +2690,7 @@ $$('.subj-tab').forEach(btn => {
     });
 });
 
-/* ---------- 12.2 撤销 ---------- */
+/* ---------- 13.4 撤销 ---------- */
 $('#btnUndo').addEventListener('click', () => {
     if (undoStack.length === 0) {
         toast('没有可以撤销的操作');
@@ -2286,7 +2703,7 @@ $('#btnUndo').addEventListener('click', () => {
     toast('已撤销上一步');
 });
 
-/* ---------- 12.3 开始 / 结束登分 ---------- */
+/* ---------- 13.5 开始 / 结束登分 ---------- */
 $('#btnStart').addEventListener('click', () => {
     isStarted = !isStarted;
     const btn = $('#btnStart');
@@ -2304,7 +2721,7 @@ $('#btnStart').addEventListener('click', () => {
     }
 });
 
-/* ---------- 12.4 菜单 ---------- */
+/* ---------- 13.6 菜单 ---------- */
 $('#btnMenu').addEventListener('click', () => openModal('menuModal'));
 
 document.addEventListener('click', e => {
@@ -2315,13 +2732,13 @@ document.addEventListener('click', e => {
 $('#topTitle').addEventListener('click', showOverview);
 $('#ovClose').addEventListener('click', () => closeModal('overviewModal'));
 
-/* ---------- 12.5 本次成绩总览 ---------- */
+/* ---------- 13.7 本次成绩总览 ---------- */
 $('#menuOverview').addEventListener('click', () => {
     closeModal('menuModal');
     showOverview();
 });
 
-/* ---------- 12.6 统计与不及格名单 ---------- */
+/* ---------- 13.8 统计与不及格名单 ---------- */
 $('#menuStats').addEventListener('click', () => {
     closeModal('menuModal');
     $('#statsTitle').textContent = '成绩统计 · ' + getSubjectName(currentSubject);
@@ -2336,7 +2753,7 @@ $('#statsSortTabs').addEventListener('click', e => {
     renderStatsModal();
 });
 
-/* ---------- 12.7 修改及格线 ---------- */
+/* ---------- 13.9 修改及格线 ---------- */
 $('#passLineInput').addEventListener('change', e => {
     let val = parseFloat(e.target.value);
     if (isNaN(val) || val < 0 || val > 100) val = 60;
@@ -2349,7 +2766,7 @@ $('#passLineInput').addEventListener('change', e => {
     renderStatsModal();
 });
 
-/* ---------- 12.8 保存本次记录 ---------- */
+/* ---------- 13.10 保存本次记录 ---------- */
 $('#menuSave').addEventListener('click', () => {
     closeModal('menuModal');
 
@@ -2370,7 +2787,7 @@ $('#btnConfirmSave').addEventListener('click', () => {
     const records = state.students.map(s => ({
         sid: s.sid,
         name: s.name,
-        scores: { ...s.scores }
+        scores: Object.assign({}, s.scores)
     }));
 
     state.history.unshift({
@@ -2385,7 +2802,7 @@ $('#btnConfirmSave').addEventListener('click', () => {
     toast('保存成功');
 });
 
-/* ---------- 12.9 历史记录列表 ---------- */
+/* ---------- 13.11 历史记录列表 ---------- */
 $('#menuHistory').addEventListener('click', () => {
     closeModal('menuModal');
     renderHistoryList();
@@ -2433,23 +2850,46 @@ function renderHistoryList() {
     });
 }
 
-/* ---------- 12.10 历史详情：导出 CSV ---------- */
+/* ---------- 13.12 历史详情：导出 CSV ---------- */
 $('#btnHDExport').addEventListener('click', () => {
     const h = currentHistoryItem;
     if (!h) return;
 
-    exportTable(h.records, '历史成绩_' + String(h.title || '记录').replace(/[\\/:*?"<>|]/g, '_') + '_' + h.date);
-    toast('已导出成绩表格');
+    const clsName = curClass() ? curClass().name : '班级';
+    const result = exportTable(h.records, clsName + '_历史成绩_' + String(h.title || '记录').replace(/[\\/:*?"<>|]/g, '_') + '_' + h.date);
+
+    if (result === 'manual') {
+        toast('已在新页面打开，请长按或通过菜单保存文件');
+    } else if (result === 'share') {
+        toast('请通过分享面板保存或发送文件');
+    } else {
+        toast('成绩表格已导出');
+    }
 });
 
-/* ---------- 12.11 导出当前 CSV ---------- */
+/* ---------- 13.13 导出当前 CSV ---------- */
 $('#menuExport').addEventListener('click', () => {
     closeModal('menuModal');
-    exportTable(state.students, '班级总成绩_' + todayStr());
-    toast('成绩表格已导出');
+    const clsName = curClass() ? curClass().name : '班级';
+    const result = exportTable(state.students, clsName + '_班级总成绩_' + todayStr());
+
+    if (result === 'manual') {
+        toast('已在新页面打开，请长按或通过菜单保存文件');
+    } else if (result === 'share') {
+        toast('请通过分享面板保存或发送文件');
+    } else {
+        toast('成绩表格已导出');
+    }
 });
 
-/* ---------- 12.12 名单管理 ---------- */
+/* ---------- 13.14 班级管理入口 ---------- */
+$('#menuClassManage').addEventListener('click', () => {
+    closeModal('menuModal');
+    renderClassList();
+    openModal('classModal');
+});
+
+/* ---------- 13.15 名单管理 ---------- */
 $('#menuRoster').addEventListener('click', () => {
     closeModal('menuModal');
 
@@ -2483,7 +2923,7 @@ $('#btnSaveRoster').addEventListener('click', () => {
     const oldScoresByName = {};
     state.students.forEach(s => {
         if (s.scores) {
-            oldScoresByName[s.name] = { ...s.scores };
+            oldScoresByName[s.name] = Object.assign({}, s.scores);
         }
     });
 
@@ -2525,7 +2965,7 @@ $('#btnSaveRoster').addEventListener('click', () => {
     toast('名单已更新（共 ' + state.students.length + ' 人）');
 });
 
-/* ---------- 12.13 清空当前学科分数 ---------- */
+/* ---------- 13.16 清空当前学科分数 ---------- */
 $('#menuClear').addEventListener('click', () => {
     closeModal('menuModal');
     if (confirm('确定清空当前【' + getSubjectName(currentSubject) + '】所有学生的分数吗？（可撤销）')) {
@@ -2541,11 +2981,11 @@ $('#menuClear').addEventListener('click', () => {
     }
 });
 
-/* ---------- 12.14 批量确认 / 取消 ---------- */
+/* ---------- 13.17 批量确认 / 取消 ---------- */
 $('#btnConfirmBatch').addEventListener('click', confirmBatch);
 $('#btnCancelBatch').addEventListener('click', cancelBatch);
 
-/* ---------- 12.15 阻止双击缩放 ---------- */
+/* ---------- 13.18 阻止双击缩放 ---------- */
 let lastTouchEnd = 0;
 document.addEventListener('touchend', e => {
     const now = Date.now();
@@ -2553,11 +2993,12 @@ document.addEventListener('touchend', e => {
     lastTouchEnd = now;
 }, { passive: false });
 
-/* ---------- 12.16 启动 ---------- */
+/* ---------- 13.19 启动 ---------- */
 function init() {
     load();
     initScoreGrid();
     render();
+    updateClassBtn();
 }
 
 init();
