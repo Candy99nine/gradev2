@@ -1,0 +1,2568 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="format-detection" content="telephone=no">
+<title>手机登分助手</title>
+
+<style>
+/* ==========================================================================
+   1. 基础重置与变量 (极简清爽风)
+   ========================================================================== */
+:root {
+    --bg: #F5F7FA;
+    --ink: #333333;
+    --ink-soft: #666666;
+    --line: #E2E6ED;
+    --primary: #4A90E2;
+    --primary-soft: #E6F0FA;
+    --green: #34C759;
+    --green-soft: #E5F8E9;
+    --danger: #FF3B30;
+    --orange: #FF9500;
+    --card: #FFFFFF;
+}
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+}
+/* 输入区域允许选中文字 */
+input, textarea, select {
+    user-select: text;
+    -webkit-user-select: text;
+}
+body {
+    font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    height: 100vh;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+button {
+    border: none;
+    background: none;
+    font-family: inherit;
+    cursor: pointer;
+    outline: none;
+}
+
+/* ==========================================================================
+   2. 顶部栏 & 学科切换栏
+   ========================================================================== */
+.topbar {
+    height: 56px;
+    flex: none;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    gap: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    z-index: 10;
+}
+.btn-start {
+    background: var(--primary);
+    color: #fff;
+    font-size: 15px;
+    font-weight: bold;
+    padding: 8px 16px;
+    border-radius: 8px;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+.btn-start.active {
+    background: var(--danger);
+}
+.btn-undo {
+    background: #F0F2F5;
+    color: var(--ink);
+    font-size: 14px;
+    font-weight: bold;
+    padding: 8px 12px;
+    border-radius: 8px;
+}
+.btn-undo:active { background: #E2E6ED; }
+.topbar-title {
+    flex: 1;
+    text-align: center;
+    font-weight: bold;
+    font-size: 15px;
+    color: var(--ink-soft);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;      /* 点击标题可打开成绩总览 */
+}
+.btn-menu {
+    font-size: 20px;
+    color: var(--ink-soft);
+    padding: 4px 8px;
+}
+
+/* 新增：学科切换栏 */
+.subject-bar {
+    display: flex;
+    background: #fff;
+    border-bottom: 1px solid var(--line);
+    flex: none;
+    z-index: 9;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+}
+.subj-tab {
+    flex: 1;
+    height: 46px;
+    font-size: 15px;
+    font-weight: bold;
+    color: var(--ink-soft);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+}
+.subj-tab.active {
+    color: var(--primary);
+}
+.subj-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 25%;
+    right: 25%;
+    height: 3px;
+    background: var(--primary);
+    border-radius: 3px 3px 0 0;
+}
+
+/* ==========================================================================
+   3. 主体区域 (左窄右宽)
+   ========================================================================== */
+.main-area {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: row;
+}
+
+/* 左侧：学生名单 (加宽至46%，适配3列) */
+.student-panel {
+    flex: 0 0 46%;
+    background: #fff;
+    border-right: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+}
+.panel-header {
+    flex: none;
+    padding: 8px 6px;
+    font-size: 12px;
+    font-weight: bold;
+    color: var(--ink-soft);
+    text-align: center;
+    border-bottom: 1px solid var(--line);
+    background: #FAFBFC;
+}
+.student-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    align-content: start;
+}
+.stu-card {
+    background: var(--bg);
+    border-radius: 8px;
+    padding: 8px 2px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    border: 1.5px solid transparent;
+}
+.stu-card:active { transform: scale(0.96); }
+.stu-card.selected {
+    border-color: var(--primary);
+    background: var(--primary-soft);
+}
+.stu-card.batch-selected {
+    border-color: var(--green);
+    background: var(--green-soft);
+}
+.stu-card.has-score {
+    opacity: 0.6;
+}
+.stu-name {
+    font-size: 12px;
+    font-weight: bold;
+    color: var(--ink);
+    margin-bottom: 2px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.stu-score {
+    font-size: 11px;
+    font-weight: bold;
+    color: var(--primary);
+}
+.stu-score.empty { color: #B3B9C4; }
+.stu-card.batch-selected::after {
+    content: '✓';
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: var(--green);
+    color: #fff;
+    font-size: 10px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #fff;
+}
+
+/* 右侧：分数面板 (占54%，改为3列) */
+.score-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+}
+.score-panel.active-batch {
+    box-shadow: inset 0 0 0 3px var(--green);
+}
+.score-grid {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    align-content: start;
+}
+.score-btn {
+    height: 46px;
+    border-radius: 10px;
+    background: #F0F2F5;
+    color: var(--ink);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    border: 1.5px solid transparent;
+    overflow: hidden;
+    padding: 0;
+    position: relative;
+}
+.score-btn:active {
+    background: #E2E6ED;
+}
+.score-btn .btn-int {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    font-weight: bold;
+    line-height: 1;
+}
+.score-btn .btn-half {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: bold;
+    line-height: 1;
+    padding: 2px 0 3px;
+    background: rgba(0,0,0,0.06);
+}
+.score-btn.active {
+    background: var(--green);
+    color: #fff;
+    border-color: var(--green);
+    box-shadow: 0 2px 6px rgba(52, 199, 89, 0.3);
+}
+.score-btn.active .btn-half {
+    background: rgba(255,255,255,0.2);
+}
+.score-btn.active-half {
+    border-color: var(--green);
+}
+.score-btn.active-half .btn-half {
+    background: var(--green);
+    color: #fff;
+}
+/* 分段颜色 */
+.score-btn.range-1 { background: #FFEBE9; color: #FF3B30; } /* 100-90 红 */
+.score-btn.range-2 { background: #FFF4E5; color: #FF9500; } /* 89-80 橙 */
+.score-btn.range-3 { background: #E6F0FA; color: #4A90E2; } /* 79-70 蓝 */
+.score-btn.range-4 { background: #E5F8E9; color: #34C759; } /* 69-60 绿 */
+.score-btn.fail-score { background: #F5F7FA; color: #999999; } /* <60 灰 */
+
+/* ==========================================================================
+   4. 底部悬浮确认栏 (批量模式)
+   ========================================================================== */
+.batch-confirm-bar {
+    position: fixed;
+    bottom: -100px;
+    left: 0;
+    right: 0;
+    background: #fff;
+    padding: 12px 16px;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    display: flex;
+    gap: 12px;
+    transition: bottom 0.3s cubic-bezier(0.2, 1, 0.3, 1);
+    z-index: 20;
+}
+.batch-confirm-bar.show {
+    bottom: 0;
+}
+.btn-cancel-batch {
+    flex: 1;
+    height: 48px;
+    border-radius: 12px;
+    background: #F0F2F5;
+    font-size: 16px;
+    font-weight: bold;
+    color: var(--ink-soft);
+}
+.btn-confirm-batch {
+    flex: 2;
+    height: 48px;
+    border-radius: 12px;
+    background: var(--green);
+    color: #fff;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+/* ==========================================================================
+   5. 弹窗通用
+   ========================================================================== */
+.modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 100;
+}
+.modal.active { display: flex; }
+.modal-card {
+    width: 100%;
+    max-width: 600px;
+    background: #fff;
+    border-radius: 20px 20px 0 0;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    animation: slideUp 0.25s ease-out;
+}
+@keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}
+.modal-head {
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--line);
+    flex: none;
+}
+.modal-head h3 { font-size: 16px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 12px; }
+.modal-head .x {
+    font-size: 24px;
+    color: #999;
+    flex: none;
+}
+.modal-body {
+    padding: 16px 20px;
+    overflow-y: auto;
+    flex: 1;
+}
+.modal-foot {
+    padding: 12px 20px 24px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    gap: 10px;
+    flex: none;
+}
+.btn-primary {
+    flex: 1;
+    height: 48px;
+    border-radius: 12px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 16px;
+    font-weight: bold;
+}
+.btn-secondary {
+    flex: 1;
+    height: 48px;
+    border-radius: 12px;
+    background: #F0F2F5;
+    color: var(--ink);
+    font-size: 16px;
+    font-weight: bold;
+}
+
+/* 菜单项 */
+.menu-list {
+    display: flex;
+    flex-direction: column;
+}
+.menu-item {
+    padding: 16px;
+    font-size: 16px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--ink);
+}
+.menu-item:active { background: #F9F9F9; }
+.menu-item.danger { color: var(--danger); }
+
+/* 统计数据 */
+.stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+.stat-card {
+    background: var(--bg);
+    padding: 12px;
+    border-radius: 10px;
+    text-align: center;
+}
+.stat-card .label { font-size: 12px; color: var(--ink-soft); margin-bottom: 4px; }
+.stat-card .value { font-size: 20px; font-weight: bold; }
+.stat-card .value.green { color: var(--green); }
+.stat-card .value.red { color: var(--danger); }
+
+/* ==========================================================================
+   6. 排序切换标签 & 全班成绩列表
+   ========================================================================== */
+.sort-tabs {
+    display: flex;
+    gap: 4px;
+    background: #F0F2F5;
+    padding: 3px;
+    border-radius: 9px;
+    flex: none;
+}
+.sort-tab {
+    padding: 5px 10px;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: bold;
+    color: var(--ink-soft);
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+.sort-tab.active {
+    background: var(--primary);
+    color: #fff;
+}
+.sort-tab:active { transform: scale(0.95); }
+
+/* 自定义下拉排序 */
+.custom-sort-select {
+    padding: 4px 24px 4px 10px;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: bold;
+    color: var(--primary);
+    border: 1px solid #E2E6ED;
+    background: #FAFBFC url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%234A90E2' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") no-repeat right 8px center;
+    -webkit-appearance: none;
+    appearance: none;
+    outline: none;
+    height: 32px;
+}
+
+.all-score-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    max-height: 260px;
+    overflow-y: auto;
+    padding: 2px 0;
+    -webkit-overflow-scrolling: touch;
+}
+.asc-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: #FAFBFC;
+    font-size: 14px;
+}
+.asc-row .rank {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #E2E6ED;
+    color: #666;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: bold;
+    flex: none;
+}
+.asc-row .rank.r1 { background: linear-gradient(135deg, #FFD700, #FFA500); color: #fff; }
+.asc-row .rank.r2 { background: linear-gradient(135deg, #C0C0C0, #A0A0A0); color: #fff; }
+.asc-row .rank.r3 { background: linear-gradient(135deg, #CD7F32, #B8860B); color: #fff; }
+.asc-row .name {
+    flex: 1;
+    font-weight: bold;
+    color: var(--ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+.asc-row .sid {
+    font-size: 12px;
+    color: #B3B9C4;
+    flex: none;
+}
+.asc-row .score {
+    font-size: 16px;
+    font-weight: bold;
+    min-width: 44px;
+    text-align: right;
+    flex: none;
+}
+.asc-row .score.good { color: var(--orange); }
+.asc-row .score.pass { color: var(--green); }
+.asc-row .score.fail { color: var(--danger); }
+.asc-row .score.empty { color: #B3B9C4; font-size: 14px; }
+
+/* 历史列表 */
+.his-row {
+    display: flex;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line);
+    gap: 8px;
+}
+.his-info { flex: 1; min-width: 0; cursor: pointer; }
+.his-title {
+    font-size: 15px;
+    font-weight: bold;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.his-date { font-size: 12px; color: var(--ink-soft); }
+.his-view, .his-del {
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: bold;
+    flex: none;
+}
+.his-view { background: #E6F0FA; color: var(--primary); }
+.his-view:active { background: #D0E4F7; }
+.his-del { background: #FFEBE9; color: var(--danger); }
+.his-del:active { background: #FFD5D1; }
+
+/* 表单 */
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 14px; color: var(--ink-soft); margin-bottom: 6px; }
+.form-group input {
+    width: 100%;
+    height: 44px;
+    padding: 0 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-size: 16px;
+    outline: none;
+}
+.form-group input:focus { border-color: var(--primary); }
+
+/* 名单编辑文本域 */
+#rosterTextarea {
+    width: 100%;
+    height: 300px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 15px;
+    line-height: 1.9;
+    font-family: inherit;
+    resize: vertical;
+    outline: none;
+    background: #FAFBFC;
+}
+#rosterTextarea:focus { border-color: var(--primary); background: #fff; }
+
+/* 提示 */
+#toast {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0,0,0,0.75);
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 999;
+    text-align: center;
+}
+#toast.show { opacity: 1; }
+
+/* 不及格名单标签 */
+.fail-tag {
+    display: inline-block;
+    background: #FFEBE9;
+    color: var(--danger);
+    padding: 4px 8px;
+    border-radius: 6px;
+    margin: 4px;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+/* ==========================================================================
+   7. 本次成绩总览（全屏 · 为截屏优化）
+   ========================================================================== */
+.modal.overview-modal {
+    background: #fff;
+    align-items: stretch;
+    justify-content: stretch;
+    padding: 0;
+    z-index: 105;
+}
+.modal.overview-modal.active { display: flex; }
+
+.ov-sheet {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    background: #fff;
+    padding: 24px 20px 40px;
+    position: relative;
+}
+
+.ov-close {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.06);
+    color: #888;
+    font-size: 22px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 110;
+}
+.ov-close:active { background: rgba(0,0,0,0.12); }
+
+.ov-head { text-align: center; margin-bottom: 18px; }
+.ov-title {
+    font-size: 22px;
+    font-weight: 800;
+    color: #333;
+    letter-spacing: 1.5px;
+}
+.ov-sub {
+    font-size: 13px;
+    color: #999;
+    margin-top: 6px;
+}
+
+.ov-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 18px;
+}
+.ov-stat {
+    background: var(--bg);
+    border-radius: 10px;
+    padding: 10px 4px;
+    text-align: center;
+}
+.ov-stat b {
+    display: block;
+    font-size: 16px;
+    font-weight: 800;
+    color: #333;
+    line-height: 1.2;
+}
+.ov-stat span {
+    display: block;
+    font-size: 11px;
+    color: #999;
+    margin-top: 3px;
+}
+
+.ov-list {
+    display: flex;
+    flex-direction: column;
+    gap: 3px; /* 间距变小 */
+}
+.ov-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 10px; /* 上下内边距变小 */
+    border-radius: 6px;
+    background: #FAFBFC;
+}
+.ov-row:active { background: #F0F2F5; }
+
+.ov-rank {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #E2E6ED;
+    color: #777;
+    font-size: 11px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.ov-rank.r1 { background: linear-gradient(135deg, #FFD700, #FFA500); color: #fff; }
+.ov-rank.r2 { background: linear-gradient(135deg, #C0C0C0, #A0A0A0); color: #fff; }
+.ov-rank.r3 { background: linear-gradient(135deg, #CD7F32, #B8860B); color: #fff; }
+
+.ov-name {
+    flex: 1;
+    font-size: 14px;
+    font-weight: bold;
+    color: #333;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ov-sid {
+    font-size: 11px;
+    color: #B3B9C4;
+    flex: none;
+}
+.ov-score {
+    flex: none;
+    min-width: 38px;
+    text-align: right;
+    font-size: 16px;
+    font-weight: 800;
+}
+/* 分数段颜色 */
+.ov-score.s1 { color: #FF3B30; } /* 90-100% */
+.ov-score.s2 { color: #FF9500; } /* 80-89% */
+.ov-score.s3 { color: #4A90E2; } /* 70-79% */
+.ov-score.s4 { color: #34C759; } /* 60-69% */
+.ov-score.s5 { color: #999999; } /* <60% */
+
+.ov-foot { margin-top: 22px; }
+.ov-foot-title {
+    font-size: 14px;
+    font-weight: bold;
+    color: var(--ink-soft);
+    margin-bottom: 10px;
+}
+.ov-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.ov-tag {
+    background: #FFEBE9;
+    color: var(--danger);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: bold;
+}
+.ov-tag.gray {
+    background: #F0F2F5;
+    color: #999;
+}
+
+/* 成绩分布网格 */
+.ov-dist-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+}
+.ov-dist-card {
+    border-radius: 8px;
+    padding: 10px 2px;
+    text-align: center;
+}
+.ov-dist-num {
+    font-size: 17px;
+    font-weight: 800;
+    line-height: 1.1;
+}
+.ov-dist-num span {
+    font-size: 11px;
+    font-weight: normal;
+}
+.ov-dist-label {
+    font-size: 10px;
+    margin-top: 4px;
+    opacity: 0.85;
+    white-space: nowrap;
+}
+
+.ov-tip {
+    margin-top: 24px;
+    text-align: center;
+    font-size: 12px;
+    color: #C0C4CC;
+}
+
+/* ==========================================================================
+   8. 单个学生成绩分析
+   ========================================================================== */
+#analysisModal { z-index: 120; }
+
+.ana-hero { text-align: center; padding: 4px 0 18px; }
+.ana-name { font-size: 18px; font-weight: bold; color: #333; }
+.ana-sid {
+    font-size: 12px;
+    color: #999;
+    font-weight: normal;
+    margin-left: 8px;
+}
+.ana-score {
+    font-size: 48px;
+    font-weight: 800;
+    line-height: 1.1;
+    margin: 8px 0 6px;
+}
+.ana-score.good { color: var(--orange); }
+.ana-score.pass { color: var(--green); }
+.ana-score.fail { color: var(--danger); }
+
+.ana-badge {
+    display: inline-block;
+    padding: 3px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: bold;
+}
+.ana-badge.good { background: #FFF4E5; color: var(--orange); }
+.ana-badge.pass { background: var(--green-soft); color: #1E823B; }
+.ana-badge.fail { background: #FFEBE9; color: var(--danger); }
+
+.ana-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+.ana-cell {
+    background: var(--bg);
+    border-radius: 10px;
+    padding: 10px 12px;
+}
+.ana-cell span {
+    display: block;
+    font-size: 11px;
+    color: #999;
+    margin-bottom: 4px;
+}
+.ana-cell b { font-size: 16px; color: #333; }
+.ana-cell b.green { color: var(--green); }
+.ana-cell b.red { color: var(--danger); }
+
+.ana-section-title {
+    font-size: 13px;
+    font-weight: bold;
+    color: var(--ink-soft);
+    margin: 0 0 10px;
+}
+
+.ana-track {
+    position: relative;
+    height: 12px;
+    border-radius: 6px;
+    background: #F0F2F5;
+    margin-bottom: 8px;
+}
+.ana-track-fill {
+    height: 100%;
+    border-radius: 6px;
+    background: linear-gradient(90deg, #4A90E2, #6FB1F0);
+    transition: width 0.4s ease;
+}
+.ana-track-avg {
+    position: absolute;
+    top: -4px;
+    width: 3px;
+    height: 20px;
+    background: var(--danger);
+    border-radius: 2px;
+}
+.ana-track-legend {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #999;
+    margin-bottom: 22px;
+}
+
+.ana-trend {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    height: 120px;
+    overflow-x: auto;
+    padding: 0 2px 2px;
+}
+.ana-trend-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    height: 100%;
+    min-width: 46px;
+    flex: none;
+}
+.ana-trend-val {
+    font-size: 11px;
+    font-weight: bold;
+    margin-bottom: 3px;
+}
+.ana-trend-val.good { color: var(--orange); }
+.ana-trend-val.pass { color: var(--green); }
+.ana-trend-val.fail { color: var(--danger); }
+
+.ana-trend-bar {
+    width: 26px;
+    border-radius: 6px 6px 0 0;
+}
+.ana-trend-bar.good { background: linear-gradient(180deg, #FFC26B, #FF9500); }
+.ana-trend-bar.pass { background: linear-gradient(180deg, #6FE096, #34C759); }
+.ana-trend-bar.fail { background: linear-gradient(180deg, #FF8C8C, #FF3B30); }
+
+.ana-trend-date {
+    font-size: 10px;
+    color: #999;
+    margin-top: 5px;
+    white-space: nowrap;
+}
+
+.ana-trend-tip {
+    margin-top: 14px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--bg);
+    font-size: 13px;
+    color: var(--ink-soft);
+    line-height: 1.6;
+}
+
+/* 班级排名折线图 */
+.ana-rank-chart-wrap {
+    background: #FAFBFC;
+    border-radius: 10px;
+    padding: 12px 10px;
+    margin-bottom: 20px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.ana-rank-chart {
+    display: block;
+}
+</style>
+</head>
+<body>
+
+<!-- 顶部栏 -->
+<header class="topbar">
+    <button class="btn-start" id="btnStart">开始登分</button>
+    <button class="btn-undo" id="btnUndo">撤销</button>
+    <div class="topbar-title" id="topTitle">登分助手</div>
+    <button class="btn-menu" id="btnMenu">☰</button>
+</header>
+
+<!-- 学科切换栏 -->
+<nav class="subject-bar" id="subjectBar">
+    <button class="subj-tab active" data-subj="chinese" type="button">语文</button>
+    <button class="subj-tab" data-subj="math" type="button">数学</button>
+    <button class="subj-tab" data-subj="english" type="button">英语</button>
+    <button class="subj-tab" data-subj="science" type="button">科学</button>
+</nav>
+
+<!-- 主体 -->
+<main class="main-area">
+    <!-- 左：名单 -->
+    <div class="student-panel">
+        <div class="panel-header">名单 (<span id="countScored">0</span>/<span id="countTotal">0</span>)</div>
+        <div class="student-list" id="studentList"></div>
+    </div>
+
+    <!-- 右：分数 -->
+    <div class="score-panel" id="scorePanel">
+        <div class="score-grid" id="scoreGrid"></div>
+    </div>
+</main>
+
+<!-- 底部批量确认栏 -->
+<div class="batch-confirm-bar" id="batchBar">
+    <button class="btn-cancel-batch" id="btnCancelBatch">取消</button>
+    <button class="btn-confirm-batch" id="btnConfirmBatch">确认录入 (0人)</button>
+</div>
+
+<!-- 弹窗：菜单 -->
+<div class="modal" id="menuModal">
+    <div class="modal-card">
+        <div class="modal-head">
+            <h3>更多操作</h3>
+            <button class="x" data-close="menuModal">×</button>
+        </div>
+        <div class="menu-list">
+            <div class="menu-item" id="menuOverview">📸 本次成绩总览（可截屏）</div>
+            <div class="menu-item" id="menuStats">📊 查看统计与不及格名单</div>
+            <div class="menu-item" id="menuSave">💾 保存本次记录</div>
+            <div class="menu-item" id="menuHistory">🕘 历史记录</div>
+            <div class="menu-item" id="menuExport">📤 导出成绩表格（CSV）</div>
+            <div class="menu-item" id="menuRoster">👥 修改名单</div>
+            <div class="menu-item danger" id="menuClear">⚠️ 清空当前学科分数</div>
+        </div>
+    </div>
+</div>
+
+<!-- 弹窗：统计（含排序切换 + 全班成绩列表） -->
+<div class="modal" id="statsModal">
+    <div class="modal-card">
+        <div class="modal-head">
+            <h3 id="statsTitle">成绩统计</h3>
+            <button class="x" data-close="statsModal">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="stat-grid">
+                <div class="stat-card"><div class="label">平均分</div><div class="value" id="statAvg">--</div></div>
+                <div class="stat-card"><div class="label">最高 / 最低</div><div class="value" id="statMaxMin" style="font-size:16px;">-- / --</div></div>
+                <div class="stat-card"><div class="label">及格人数</div><div class="value green" id="statPass">0</div></div>
+                <div class="stat-card"><div class="label">不及格人数</div><div class="value red" id="statFail">0</div></div>
+            </div>
+
+            <!-- 全班成绩 + 排序方式 -->
+            <div style="margin-top:6px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; gap:8px;">
+                    <div style="font-size:14px; font-weight:bold;">全班成绩</div>
+                    <div class="sort-tabs" id="statsSortTabs">
+                        <button class="sort-tab active" data-sort="score" type="button">按分数</button>
+                        <button class="sort-tab" data-sort="sid" type="button">按学号</button>
+                        <button class="sort-tab" data-sort="name" type="button">按姓名</button>
+                    </div>
+                </div>
+                <div id="allScoreList" class="all-score-list"></div>
+            </div>
+
+            <div style="margin-top:18px;">
+                <div style="font-size:14px; font-weight:bold; margin-bottom:8px;">不及格名单：</div>
+                <div id="failList" style="min-height:40px;"></div>
+            </div>
+
+            <div style="margin-top:18px; display:flex; align-items:center; gap:8px;">
+                <span style="font-size:14px;">及格线:</span>
+                <input type="number" id="passLineInput" value="60" style="width:60px; height:32px; text-align:center; border:1px solid #ccc; border-radius:6px;">
+                <span style="font-size:14px;">分</span>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-primary" data-close="statsModal">关闭</button>
+        </div>
+    </div>
+</div>
+
+<!-- 弹窗：保存记录 -->
+<div class="modal" id="saveModal">
+    <div class="modal-card">
+        <div class="modal-head">
+            <h3>保存成绩</h3>
+            <button class="x" data-close="saveModal">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>考试名称 / 备注</label>
+                <input type="text" id="recordTitleInput" placeholder="例如：第一单元测验">
+            </div>
+            <div class="form-group">
+                <label>日期</label>
+                <input type="text" id="recordDateInput" readonly style="background:#F5F7FA; color:#999;">
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-secondary" data-close="saveModal">取消</button>
+            <button class="btn-primary" id="btnConfirmSave">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- 弹窗：历史列表 -->
+<div class="modal" id="historyModal">
+    <div class="modal-card">
+        <div class="modal-head">
+            <h3>历史记录</h3>
+            <button class="x" data-close="historyModal">×</button>
+        </div>
+        <div class="modal-body" id="historyListBody"></div>
+        <div class="modal-foot">
+            <button class="btn-primary" data-close="historyModal">关闭</button>
+        </div>
+    </div>
+</div>
+
+<!-- 弹窗：历史记录详情 -->
+<div class="modal" id="historyDetailModal">
+    <div class="modal-card">
+        <div class="modal-head">
+            <h3 id="hdTitle">历史记录</h3>
+            <button class="x" data-close="historyDetailModal">×</button>
+        </div>
+        <div class="modal-body" id="hdBody"></div>
+        <div class="modal-foot">
+            <button class="btn-secondary" id="btnHDExport" type="button">导出表格</button>
+            <button class="btn-primary" data-close="historyDetailModal">关闭</button>
+        </div>
+    </div>
+</div>
+
+<!-- 弹窗：名单管理（整份覆盖） -->
+<div class="modal" id="rosterModal">
+    <div class="modal-card">
+        <div class="modal-head">
+            <h3>修改名单</h3>
+            <button class="x" data-close="rosterModal">×</button>
+        </div>
+        <div class="modal-body">
+            <p style="font-size:13px; color:#999; line-height:1.8; margin-bottom:10px;">
+                每行一个学生，格式为「学号 姓名」或直接输入「姓名」。<br>
+                保存后将 <b style="color:#FF3B30;">完全替换</b> 当前名单，同名学生的各科分数会自动保留。
+            </p>
+            <textarea id="rosterTextarea" spellcheck="false" placeholder="01 张三&#10;02 李四&#10;王五"></textarea>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+                <span style="font-size:12px; color:#999;">当前共 <b id="rosterCount">0</b> 人</span>
+                <button id="btnRosterReset" type="button" style="font-size:13px; color:#4A90E2; font-weight:bold; padding:6px 4px;">恢复默认名单</button>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-secondary" data-close="rosterModal">取消</button>
+            <button class="btn-primary" id="btnSaveRoster">保存名单</button>
+        </div>
+    </div>
+</div>
+
+<!-- 弹窗：本次成绩总览（全屏，适合截屏发家长群） -->
+<div class="modal overview-modal" id="overviewModal">
+    <button class="ov-close" id="ovClose" type="button">×</button>
+    <div class="ov-sheet" id="ovSheet"></div>
+</div>
+
+<!-- 弹窗：单个学生成绩分析 -->
+<div class="modal" id="analysisModal">
+    <div class="modal-card">
+        <div class="modal-head">
+            <h3 id="anaTitle">成绩分析</h3>
+            <button class="x" data-close="analysisModal">×</button>
+        </div>
+        <div class="modal-body" id="analysisBody"></div>
+        <div class="modal-foot">
+            <button class="btn-primary" data-close="analysisModal">关闭</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+(function () {
+'use strict';
+
+/* ==========================================================================
+   0. 工具函数
+   ========================================================================== */
+const $  = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+
+/** HTML 转义 */
+function esc(str) {
+    return String(str == null ? '' : str).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+}
+
+/** 今天日期：YYYY-MM-DD */
+function todayStr() {
+    const d = new Date();
+    return d.getFullYear() + '-' +
+           String(d.getMonth() + 1).padStart(2, '0') + '-' +
+           String(d.getDate()).padStart(2, '0');
+}
+
+/** 轻提示 */
+let toastTimer = null;
+function toast(msg) {
+    const el = $('#toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+/* ==========================================================================
+   1. 常量与状态
+   ========================================================================== */
+const STORAGE_KEY = 'dengfen_mobile_v1';
+
+/** 学科配置 */
+const SUBJECTS = [
+    { key: 'chinese', name: '语文' },
+    { key: 'math', name: '数学' },
+    { key: 'english', name: '英语' },
+    { key: 'science', name: '科学' }
+];
+
+function getSubjectName(key) {
+    const s = SUBJECTS.find(x => x.key === key);
+    return s ? s.name : '';
+}
+
+/** 默认名单 */
+const DEFAULT_NAMES = [
+    '张三', '李四', '王五'
+];
+
+/** 持久化数据 */
+let state = {
+    students: [],   // [{ id, sid, name, scores: { chinese, math, english, science } }]
+    history: [],    // [{ id, date, title, records: [{sid, name, scores}] }]
+    passLine: 60
+};
+
+/** 界面交互状态 */
+let isStarted = false;
+let currentSubject = 'chinese'; // 当前主界面选中的学科
+let selectedStudentId = null;
+let batchScore = null;
+let batchSelectedIds = [];
+let undoStack = [];
+
+/* 排序方式 */
+let statsSortBy = 'score';
+let overviewSortBy = 'score';       // 'score' | 'sid' | 'name'
+let overviewCustomSort = 'current'; // 'current' | 'total' | 'chinese' | 'math' | 'english' | 'science'
+let historyDetailSortBy = 'score';
+let currentHistoryItem = null;
+let historyDetailSubject = 'chinese'; // 历史详情选中的学科
+
+/* ==========================================================================
+   2. 存储层
+   ========================================================================== */
+function save() {
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {}
+}
+
+function load() {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+            const p = JSON.parse(raw);
+            if (p && Array.isArray(p.students) && p.students.length) {
+                // 数据迁移
+                p.students.forEach(s => {
+                    if (s.score !== undefined && !s.scores) {
+                        s.scores = { chinese: s.score, math: null, english: null, science: null };
+                        delete s.score;
+                    }
+                });
+                if (Array.isArray(p.history)) {
+                    p.history.forEach(h => {
+                        if (h.records) {
+                            h.records.forEach(r => {
+                                if (r.score !== undefined && !r.scores) {
+                                    r.scores = { chinese: r.score, math: null, english: null, science: null };
+                                    delete r.score;
+                                }
+                            });
+                        }
+                    });
+                }
+                state.students = p.students;
+                state.history  = Array.isArray(p.history) ? p.history : [];
+                state.passLine = (typeof p.passLine === 'number') ? p.passLine : 60;
+                return;
+            }
+        }
+    } catch (e) {}
+
+    state.students = DEFAULT_NAMES.map((name, i) => ({
+        id: i + 1,
+        sid: String(i + 1).padStart(2, '0'),
+        name: name,
+        scores: { chinese: null, math: null, english: null, science: null }
+    }));
+    save();
+}
+
+function pushUndo() {
+    undoStack.push(JSON.stringify(state.students));
+    if (undoStack.length > 50) undoStack.shift();
+}
+
+/* ==========================================================================
+   3. 派生数据（按当前选中的学科计算）
+   ========================================================================== */
+
+function isValidScore(v) {
+    return v !== null && v !== undefined;
+}
+
+/** 已录入当前学科分数的学生列表 */
+function getScored() {
+    return state.students.filter(s => s.scores && isValidScore(s.scores[currentSubject]));
+}
+
+/** 当前学科的排名表 */
+function getRankMap() {
+    const sorted = getScored().slice().sort((a, b) => b.scores[currentSubject] - a.scores[currentSubject]);
+    const map = {};
+    let prevScore = null;
+    let prevRank = 0;
+
+    sorted.forEach((s, i) => {
+        let rank;
+        const score = s.scores[currentSubject];
+        if (prevScore !== null && score === prevScore) {
+            rank = prevRank;
+        } else {
+            rank = i + 1;
+            prevRank = rank;
+            prevScore = score;
+        }
+        map[s.id] = rank;
+    });
+    return map;
+}
+
+/** 给一组临时记录计算排名 */
+function getRankMapForRecords(records) {
+    const scored = records.filter(r => isValidScore(r.score));
+    const sorted = scored.slice().sort((a, b) => b.score - a.score);
+    const map = new Map();
+    let prevScore = null;
+    let prevRank = 0;
+
+    sorted.forEach((r, i) => {
+        let rank;
+        if (prevScore !== null && r.score === prevScore) {
+            rank = prevRank;
+        } else {
+            rank = i + 1;
+            prevRank = rank;
+            prevScore = r.score;
+        }
+        map.set(r, rank);
+    });
+    return map;
+}
+
+/** 当前学科的统计数据 */
+function getStat() {
+    const scored = getScored();
+    if (!scored.length) {
+        return { count: 0, avg: 0, max: 0, min: 0, pass: 0, fail: 0, passRate: 0 };
+    }
+    const vals = scored.map(s => s.scores[currentSubject]);
+    const sum = vals.reduce((a, b) => a + b, 0);
+    const pass = vals.filter(v => v >= state.passLine).length;
+
+    return {
+        count: vals.length,
+        avg: sum / vals.length,
+        max: Math.max.apply(null, vals),
+        min: Math.min.apply(null, vals),
+        pass: pass,
+        fail: vals.length - pass,
+        passRate: Math.round(pass / vals.length * 100)
+    };
+}
+
+/** 按指定方式排序学生数组 */
+function sortStudents(arr, sortBy) {
+    const out = arr.slice();
+
+    if (sortBy === 'score') {
+        out.sort((a, b) => {
+            const sa = (a.scores && isValidScore(a.scores[currentSubject])) ? a.scores[currentSubject] : -1;
+            const sb = (b.scores && isValidScore(b.scores[currentSubject])) ? b.scores[currentSubject] : -1;
+            if (sb !== sa) return sb - sa;
+            return String(a.sid).localeCompare(String(b.sid), 'zh-CN', { numeric: true });
+        });
+    } else if (sortBy === 'sid') {
+        out.sort((a, b) => String(a.sid).localeCompare(String(b.sid), 'zh-CN', { numeric: true }));
+    } else if (sortBy === 'name') {
+        out.sort((a, b) => String(a.name).localeCompare(String(b.name), 'zh-CN'));
+    }
+    return out;
+}
+
+/** 按指定方式排序 records */
+function sortRecords(records, sortBy) {
+    const out = records.slice();
+
+    if (sortBy === 'score') {
+        out.sort((a, b) => {
+            const sa = isValidScore(a.score) ? a.score : -1;
+            const sb = isValidScore(b.score) ? b.score : -1;
+            if (sb !== sa) return sb - sa;
+            return String(a.sid).localeCompare(String(b.sid), 'zh-CN', { numeric: true });
+        });
+    } else if (sortBy === 'sid') {
+        out.sort((a, b) => String(a.sid).localeCompare(String(b.sid), 'zh-CN', { numeric: true }));
+    } else if (sortBy === 'name') {
+        out.sort((a, b) => String(a.name).localeCompare(String(b.name), 'zh-CN'));
+    }
+    return out;
+}
+
+/** 计算总览页面的排名 */
+function getOverviewRanks(customSort) {
+    const scoredList = state.students.map(s => {
+        let score = null;
+        if (customSort === 'current') {
+            score = s.scores ? s.scores[currentSubject] : null;
+        } else if (customSort === 'total') {
+            let sum = 0, hasAny = false;
+            if (s.scores) {
+                ['chinese', 'math', 'english', 'science'].forEach(k => {
+                    if (isValidScore(s.scores[k])) { sum += s.scores[k]; hasAny = true; }
+                });
+            }
+            score = hasAny ? sum : null;
+        } else {
+            score = s.scores ? s.scores[customSort] : null;
+        }
+        return { ...s, _displayScore: score };
+    });
+
+    const validList = scoredList.filter(s => isValidScore(s._displayScore));
+    
+    validList.sort((a, b) => {
+        if (b._displayScore !== a._displayScore) return b._displayScore - a._displayScore;
+        return String(a.sid).localeCompare(String(b.sid), 'zh-CN', { numeric: true });
+    });
+
+    const map = {};
+    let prev = null, prevRank = 0;
+    validList.forEach((s, i) => {
+        let rank;
+        if (prev !== null && s._displayScore === prev) rank = prevRank;
+        else {
+            rank = i + 1;
+            prevRank = rank;
+            prev = s._displayScore;
+        }
+        map[s.id] = rank;
+    });
+
+    return { validList, rankMap: map, scoredList };
+}
+
+/* ==========================================================================
+   4. 渲染层
+   ========================================================================== */
+function render() {
+    const list = $('#studentList');
+    list.innerHTML = '';
+
+    let scoredCount = 0;
+    const frag = document.createDocumentFragment();
+
+    state.students.forEach(s => {
+        const score = s.scores ? s.scores[currentSubject] : null;
+        const hasScore = isValidScore(score);
+        if (hasScore) scoredCount++;
+
+        const card = document.createElement('div');
+        card.className = 'stu-card';
+        if (hasScore) card.classList.add('has-score');
+        if (selectedStudentId === s.id) card.classList.add('selected');
+        if (batchSelectedIds.indexOf(s.id) > -1) card.classList.add('batch-selected');
+
+        card.innerHTML =
+            '<div class="stu-name">' + esc(s.name) + '</div>' +
+            '<div class="stu-score ' + (hasScore ? '' : 'empty') + '">' +
+                (hasScore ? score : '--') +
+            '</div>';
+
+        card.addEventListener('click', () => handleStudentClick(s.id));
+        frag.appendChild(card);
+    });
+
+    list.appendChild(frag);
+
+    $('#countScored').textContent = scoredCount;
+    $('#countTotal').textContent = state.students.length;
+
+    /* 分数按钮高亮 */
+    $$('.score-btn').forEach(btn => {
+        btn.classList.remove('active', 'active-half');
+        if (batchScore !== null) {
+            const base = Number(btn.dataset.score);
+            if (batchScore === base) {
+                btn.classList.add('active');
+            } else if (batchScore === base + 0.5) {
+                btn.classList.add('active-half');
+            }
+        }
+    });
+
+    /* 批量底部确认栏 */
+    const bar = $('#batchBar');
+    if (batchScore !== null && batchSelectedIds.length > 0) {
+        bar.classList.add('show');
+        $('#btnConfirmBatch').textContent =
+            '确认录入 ' + batchScore + ' 分 (' + batchSelectedIds.length + '人)';
+    } else {
+        bar.classList.remove('show');
+    }
+
+    /* 右侧面板高亮边框 */
+    const panel = $('#scorePanel');
+    if (batchScore !== null) {
+        panel.classList.add('active-batch');
+    } else {
+        panel.classList.remove('active-batch');
+    }
+}
+
+function initScoreGrid() {
+    const grid = $('#scoreGrid');
+    grid.innerHTML = '';
+    const frag = document.createDocumentFragment();
+
+    for (let i = 100; i >= 1; i--) {
+        const btn = document.createElement('button');
+        btn.className = 'score-btn';
+        btn.dataset.score = i;
+
+        // 整数部分
+        const intSpan = document.createElement('span');
+        intSpan.className = 'btn-int';
+        intSpan.textContent = i;
+        btn.appendChild(intSpan);
+
+        // .5 部分（100 分不提供 .5）
+        if (i < 100) {
+            const halfSpan = document.createElement('span');
+            halfSpan.className = 'btn-half';
+            halfSpan.textContent = '.5';
+            halfSpan.addEventListener('click', (e) => {
+                e.stopPropagation();
+                handleScoreClick(i + 0.5);
+            });
+            btn.appendChild(halfSpan);
+        } else {
+            btn.classList.add('no-half');
+        }
+
+        if (i >= 90) btn.classList.add('range-1');
+        else if (i >= 80) btn.classList.add('range-2');
+        else if (i >= 70) btn.classList.add('range-3');
+        else if (i >= 60) btn.classList.add('range-4');
+        else btn.classList.add('fail-score');
+
+        btn.addEventListener('click', () => handleScoreClick(i));
+        frag.appendChild(btn);
+    }
+    grid.appendChild(frag);
+}
+
+/** 渲染成绩列表（通用） */
+function renderScoreList(container, items, rankMap, isRecord, passLine) {
+    let html = '';
+
+    items.forEach(item => {
+        const hasScore = isValidScore(item.score);
+        const rank = hasScore
+            ? (isRecord ? rankMap.get(item) : rankMap[item.id])
+            : null;
+        const rankCls = rank === 1 ? 'r1' : (rank === 2 ? 'r2' : (rank === 3 ? 'r3' : ''));
+        const scoreCls = !hasScore
+            ? 'empty'
+            : (item.score >= 90 ? 'good' : (item.score >= passLine ? 'pass' : 'fail'));
+
+        html += '<div class="asc-row">' +
+                    '<span class="rank ' + rankCls + '">' +
+                        (rank == null ? '-' : rank) +
+                    '</span>' +
+                    '<span class="name">' + esc(item.name) + '</span>' +
+                    '<span class="sid">' + esc(item.sid) + '</span>' +
+                    '<span class="score ' + scoreCls + '">' +
+                        (hasScore ? item.score : '--') +
+                    '</span>' +
+                '</div>';
+    });
+
+    container.innerHTML = html || '<div style="text-align:center; color:#999; padding:12px; font-size:13px;">暂无数据</div>';
+}
+
+/* ==========================================================================
+   5. 打分交互逻辑
+   ========================================================================== */
+function handleStudentClick(id) {
+    if (!isStarted) {
+        toast('请先点击左上角【开始登分】');
+        return;
+    }
+
+    if (batchScore !== null) {
+        const idx = batchSelectedIds.indexOf(id);
+        if (idx > -1) batchSelectedIds.splice(idx, 1);
+        else batchSelectedIds.push(id);
+        render();
+    } else {
+        selectedStudentId = (selectedStudentId === id) ? null : id;
+        render();
+    }
+}
+
+function handleScoreClick(score) {
+    if (!isStarted) {
+        toast('请先点击左上角【开始登分】');
+        return;
+    }
+
+    if (selectedStudentId !== null) {
+        pushUndo();
+        const stu = state.students.find(s => s.id === selectedStudentId);
+        if (stu) {
+            stu.scores[currentSubject] = score;
+            selectedStudentId = null;
+        }
+        save();
+        render();
+    } else {
+        if (batchScore === score) {
+            cancelBatch();
+        } else {
+            batchScore = score;
+            batchSelectedIds = [];
+            render();
+        }
+    }
+}
+
+function cancelBatch() {
+    batchScore = null;
+    batchSelectedIds = [];
+    render();
+}
+
+function confirmBatch() {
+    if (batchScore !== null && batchSelectedIds.length > 0) {
+        pushUndo();
+        batchSelectedIds.forEach(id => {
+            const stu = state.students.find(s => s.id === id);
+            if (stu) stu.scores[currentSubject] = batchScore;
+        });
+        save();
+        toast('已成功录入 ' + batchSelectedIds.length + ' 人');
+        cancelBatch();
+    }
+}
+
+/* ==========================================================================
+   6. 弹窗基础
+   ========================================================================== */
+function openModal(id)  { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+/* ==========================================================================
+   7. CSV 导出（兼容 iOS / 苹果手机）
+   ========================================================================== */
+function csvEscape(v) {
+    const s = String(v == null ? '' : v);
+    if (/[",\n\r]/.test(s)) {
+        return '"' + s.replace(/"/g, '""') + '"';
+    }
+    return s;
+}
+
+function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+
+    // 检测是否 iOS 且不支持 a.download 的极老版本
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    const testA = document.createElement('a');
+    if (isIOS && !('download' in testA)) {
+        window.open(url, '_blank');
+        return;
+    }
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+function exportTable(records, filenamePrefix) {
+    const dateStr = todayStr();
+    const headers = ['日期', '学号', '姓名', '语文', '数学', '英语', '科学'];
+    const rows = [headers];
+
+    records.forEach(r => {
+        const row = [dateStr, r.sid, r.name];
+        SUBJECTS.forEach(subj => {
+            const sc = r.scores ? r.scores[subj.key] : null;
+            row.push(isValidScore(sc) ? sc : '');
+        });
+        rows.push(row);
+    });
+
+    const csv = '\ufeff' + rows.map(row => row.map(csvEscape).join(',')).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const filename = filenamePrefix + '.csv';
+
+    // 优先使用 Web Share API（iOS 上体验最好）
+    if (navigator.share && navigator.canShare) {
+        try {
+            const file = new File([blob], filename, { type: 'text/csv' });
+            if (navigator.canShare({ files: [file] })) {
+                navigator.share({ files: [file], title: filenamePrefix }).catch(() => {});
+                return;
+            }
+        } catch (e) {}
+    }
+
+    downloadBlob(blob, filename);
+}
+
+/* ==========================================================================
+   8. 本次成绩总览（全屏 · 适合截屏发家长群）
+   ========================================================================== */
+function showOverview() {
+    const scored = getScored();
+    if (!scored.length) {
+        toast('当前学科还没有录入任何分数');
+        return;
+    }
+
+    const stat    = getStat();
+    
+    let displayList = [];
+    let rankMap = {};
+    let allScored = [];
+
+    if (overviewSortBy === 'sid' || overviewSortBy === 'name') {
+        const res = getOverviewRanks(overviewCustomSort);
+        rankMap = res.rankMap;
+        allScored = res.scoredList;
+        
+        displayList = [...allScored];
+        if (overviewSortBy === 'sid') {
+            displayList.sort((a, b) => String(a.sid).localeCompare(String(b.sid), 'zh-CN', { numeric: true }));
+        } else {
+            displayList.sort((a, b) => String(a.name).localeCompare(String(b.name), 'zh-CN'));
+        }
+    } else {
+        const res = getOverviewRanks(overviewCustomSort);
+        displayList = res.validList;
+        rankMap = res.rankMap;
+        allScored = res.scoredList;
+    }
+
+    // --- 统计分布 ---
+    const isTotal = overviewCustomSort === 'total';
+    const maxScore = isTotal ? 400 : 100;
+    let dist = [
+        { label: isTotal ? '360+' : '90+', count: 0, color: '#FF3B30', bg: '#FFEBE9' },
+        { label: isTotal ? '320+' : '80-89', count: 0, color: '#FF9500', bg: '#FFF4E5' },
+        { label: isTotal ? '280+' : '70-79', count: 0, color: '#4A90E2', bg: '#E6F0FA' },
+        { label: isTotal ? '240+' : '60-69', count: 0, color: '#34C759', bg: '#E5F8E9' },
+        { label: isTotal ? '<240' : '<60', count: 0, color: '#999999', bg: '#F5F7FA' }
+    ];
+
+    let excellentCount = 0;
+    let perfectCount = 0;
+    let validCount = 0;
+
+    allScored.forEach(s => {
+        const sc = s._displayScore;
+        if (sc !== null) {
+            validCount++;
+            if (sc >= maxScore * 0.9) { dist[0].count++; excellentCount++; }
+            else if (sc >= maxScore * 0.8) dist[1].count++;
+            else if (sc >= maxScore * 0.7) dist[2].count++;
+            else if (sc >= maxScore * 0.6) dist[3].count++;
+            else dist[4].count++;
+            
+            if (sc === maxScore) perfectCount++;
+        }
+    });
+
+    let html = '';
+
+    html += '<div class="ov-head">';
+    html += '  <div class="ov-title">班级成绩单</div>';
+    html += '  <div class="ov-sub">' + todayStr() + ' · ' + getSubjectName(currentSubject) + ' · 已录 ' + scored.length + ' / ' + state.students.length + ' 人</div>';
+            
+    html += '  <div style="display:flex; justify-content:center; margin-top:14px; flex-wrap:wrap; gap:8px;">';
+    html += '    <div class="sort-tabs" id="ovSortTabs" style="background:#FAFBFC; border:1px solid #E2E6ED;">';
+    html += '      <button class="sort-tab' + (overviewSortBy === 'score' ? ' active' : '') + '" data-osort="score" type="button">按分数</button>';
+    html += '      <button class="sort-tab' + (overviewSortBy === 'sid' ? ' active' : '') + '" data-osort="sid" type="button">按学号</button>';
+    html += '      <button class="sort-tab' + (overviewSortBy === 'name' ? ' active' : '') + '" data-osort="name" type="button">按姓名</button>';
+    html += '    </div>';
+
+    html += '    <select class="custom-sort-select" id="ovSortSelect">';
+    html += '      <option value="current"' + (overviewCustomSort === 'current' ? ' selected' : '') + '>当前科目成绩</option>';
+    html += '      <option value="total"' + (overviewCustomSort === 'total' ? ' selected' : '') + '>四科总分</option>';
+    html += '      <option value="chinese"' + (overviewCustomSort === 'chinese' ? ' selected' : '') + '>语文成绩</option>';
+    html += '      <option value="math"' + (overviewCustomSort === 'math' ? ' selected' : '') + '>数学成绩</option>';
+    html += '      <option value="english"' + (overviewCustomSort === 'english' ? ' selected' : '') + '>英语成绩</option>';
+    html += '      <option value="science"' + (overviewCustomSort === 'science' ? ' selected' : '') + '>科学成绩</option>';
+    html += '    </select>';
+    
+    html += '  </div>';
+    html += '</div>';
+
+    // 6宫格统计
+    html += '<div class="ov-stats">';
+    html += `  <div class="ov-stat"><b>${stat.avg.toFixed(1)}</b><span>平均分</span></div>`;
+    html += `  <div class="ov-stat"><b>${stat.max}</b><span>最高分</span></div>`;
+    html += `  <div class="ov-stat"><b>${stat.min}</b><span>最低分</span></div>`;
+    const passRate = validCount ? Math.round(stat.pass / validCount * 100) : 0;
+    const excRate = validCount ? Math.round(excellentCount / validCount * 100) : 0;
+    html += `  <div class="ov-stat"><b>${passRate}%</b><span>及格率</span></div>`;
+    html += `  <div class="ov-stat"><b>${excRate}%</b><span>优秀率(90%)</span></div>`;
+    html += `  <div class="ov-stat"><b>${perfectCount}</b><span>满分人数</span></div>`;
+    html += '</div>';
+
+    // 紧凑型成绩列表
+    html += '<div class="ov-list">';
+    displayList.forEach(s => {
+        const score   = s._displayScore;
+        const rank    = rankMap[s.id];
+        const rankCls = rank === 1 ? 'r1' : (rank === 2 ? 'r2' : (rank === 3 ? 'r3' : ''));
+        
+        let cls = 's5';
+        if (score !== null) {
+            if (score >= maxScore * 0.9) cls = 's1';
+            else if (score >= maxScore * 0.8) cls = 's2';
+            else if (score >= maxScore * 0.7) cls = 's3';
+            else if (score >= maxScore * 0.6) cls = 's4';
+        }
+
+        html += '<div class="ov-row" data-id="' + s.id + '">' +
+                    '<span class="ov-rank ' + rankCls + '">' + (rank || '-') + '</span>' +
+                    '<span class="ov-name">' + esc(s.name) + '</span>' +
+                    '<span class="ov-sid">' + esc(s.sid) + '</span>' +
+                    '<span class="ov-score ' + cls + '">' + (isValidScore(score) ? score : '--') + '</span>' +
+                '</div>';
+    });
+    html += '</div>';
+
+    // 底部成绩分布统计
+    html += '<div class="ov-foot">';
+    html += '  <div class="ov-foot-title">成绩分布（共 ' + validCount + ' 人）</div>';
+    html += '  <div class="ov-dist-grid">';
+    dist.forEach(d => {
+        const pct = validCount ? Math.round(d.count / validCount * 100) : 0;
+        html += `<div class="ov-dist-card" style="background:${d.bg}; color:${d.color};">`;
+        html += `  <div class="ov-dist-num">${d.count}<span>人</span></div>`;
+        html += `  <div class="ov-dist-label">${d.label} (${pct}%)</div>`;
+        html += `</div>`;
+    });
+    html += '  </div>';
+    html += '</div>';
+
+    // 底部未录入名单
+    const unscored = allScored.filter(s => s._displayScore === null);
+    if (unscored.length) {
+        html += '<div class="ov-foot" style="margin-top:16px;">';
+        html += '  <div class="ov-foot-title">未录入（' + unscored.length + '人）</div>';
+        html += '  <div class="ov-tags">' +
+                    unscored.map(s => '<span class="ov-tag gray">' + esc(s.name) + '</span>').join('') +
+                '</div>';
+        html += '</div>';
+    }
+
+    html += '<div class="ov-tip">点击任意同学可查看个人成绩分析 · 直接截屏即可分享</div>';
+
+    const sheet = $('#ovSheet');
+    sheet.innerHTML = html;
+    sheet.scrollTop = 0;
+
+    $$('#ovSheet .ov-row').forEach(row => {
+        row.addEventListener('click', () => {
+            showStudentAnalysis(Number(row.dataset.id));
+        });
+    });
+
+    $$('#ovSortTabs .sort-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+            overviewSortBy = btn.dataset.osort;
+            showOverview();
+        });
+    });
+
+    const select = $('#ovSortSelect');
+    if (select) {
+        select.addEventListener('change', (e) => {
+            overviewCustomSort = e.target.value;
+            if (overviewCustomSort !== 'current') {
+                overviewSortBy = 'score';
+            }
+            showOverview();
+        });
+    }
+
+    openModal('overviewModal');
+}
+
+/* ==========================================================================
+   9. 单个学生成绩分析
+   ========================================================================== */
+function showStudentAnalysis(id) {
+    const stu = state.students.find(s => s.id === id);
+    const score = stu && stu.scores ? stu.scores[currentSubject] : null;
+
+    if (!isValidScore(score)) {
+        toast('该同学 ' + getSubjectName(currentSubject) + ' 还没有录入分数');
+        return;
+    }
+
+    const scored  = getScored();
+    const stat    = getStat();
+    const rankMap = getRankMap();
+    const rank    = rankMap[stu.id];
+    const total   = scored.length;
+
+    const diff    = score - stat.avg;
+    const diffStr = (diff >= 0 ? '+' : '') + diff.toFixed(1);
+
+    const cls   = score >= 90 ? 'good' : (score >= state.passLine ? 'pass' : 'fail');
+    const badge = score >= 90 ? '优秀' : (score >= state.passLine ? '及格' : '待努力');
+
+    const trend = [];
+    const rankTrend = [];
+    const reversedHistory = state.history.slice().reverse();
+    
+    reversedHistory.forEach(h => {
+        const records = h.records || [];
+        const rec = records.find(r => r.name === stu.name);
+        const sc = rec && rec.scores ? rec.scores[currentSubject] : null;
+        
+        if (isValidScore(sc)) {
+            trend.push({ date: h.date || '', title: h.title || '', score: sc });
+            
+            const validScores = records
+                .map(r => ({ name: r.name, score: r.scores ? r.scores[currentSubject] : null }))
+                .filter(r => isValidScore(r.score))
+                .sort((a, b) => b.score - a.score);
+            
+            let rnk = 1;
+            let prev = null, prevRank = 0;
+            for (let i = 0; i < validScores.length; i++) {
+                if (prev !== null && validScores[i].score === prev) {
+                    rnk = prevRank;
+                } else {
+                    rnk = i + 1;
+                    prevRank = rnk;
+                    prev = validScores[i].score;
+                }
+                if (validScores[i].name === stu.name) break;
+            }
+            
+            rankTrend.push({
+                date: h.date,
+                title: h.title || '记录',
+                rank: rnk,
+                total: validScores.length
+            });
+        }
+    });
+
+    let html = '';
+
+    html += '<div class="ana-hero">';
+    html += '  <div class="ana-name">' + esc(stu.name) +
+            '<span class="ana-sid">学号 ' + esc(stu.sid) + ' · ' + getSubjectName(currentSubject) + '</span></div>';
+    html += '  <div class="ana-score ' + cls + '">' + score + '</div>';
+    html += '  <div class="ana-badge ' + cls + '">' + badge + '</div>';
+    html += '</div>';
+
+    html += '<div class="ana-grid">';
+    html += '  <div class="ana-cell"><span>班级排名</span><b>' + rank + ' / ' + total + '</b></div>';
+    html += '  <div class="ana-cell"><span>班级平均分</span><b>' + stat.avg.toFixed(1) + '</b></div>';
+    html += '  <div class="ana-cell"><span>与平均分相比</span><b class="' +
+            (diff >= 0 ? 'green' : 'red') + '">' + diffStr + '</b></div>';
+    html += '  <div class="ana-cell"><span>最高 / 最低</span><b>' + stat.max + ' / ' + stat.min + '</b></div>';
+    html += '</div>';
+
+    const posScore = Math.max(0, Math.min(100, score));
+    const posAvg   = Math.max(0, Math.min(100, stat.avg));
+
+    html += '<div class="ana-section-title">成绩位置（0 - 100 分）</div>';
+    html += '<div class="ana-track">';
+    html += '  <div class="ana-track-fill" style="width:' + posScore + '%"></div>';
+    html += '  <div class="ana-track-avg" style="left:' + posAvg + '%"></div>';
+    html += '</div>';
+    html += '<div class="ana-track-legend"><span>0</span><span>红线 = 班级平均分</span><span>100</span></div>';
+
+    html += '<div class="ana-section-title">历史成绩趋势</div>';
+
+    if (!trend.length) {
+        html += '<div style="font-size:13px; color:#999; padding:6px 0 4px;">暂无历史记录，保存本次成绩后即可对比趋势</div>';
+    } else {
+        html += '<div class="ana-trend">';
+        trend.forEach(t => {
+            const barH = Math.max(8, Math.round(t.score * 0.7));
+            const c = t.score >= 90 ? 'good' : (t.score >= state.passLine ? 'pass' : 'fail');
+
+            html += '<div class="ana-trend-item">';
+            html += '  <div class="ana-trend-val ' + c + '">' + t.score + '</div>';
+            html += '  <div class="ana-trend-bar ' + c + '" style="height:' + barH + 'px"></div>';
+            html += '  <div class="ana-trend-date">' + esc((t.date || '').slice(5)) + '</div>';
+            html += '</div>';
+        });
+        html += '</div>';
+    }
+
+    html += '<div class="ana-section-title" style="margin-top:20px;">班级排名趋势（名次越靠上越好）</div>';
+    if (!rankTrend.length) {
+        html += '<div style="font-size:13px; color:#999; padding:6px 0 4px;">暂无历史排名数据</div>';
+    } else {
+        const svgW = Math.max(280, rankTrend.length * 60);
+        const svgH = 130;
+        const padX = 36, padY = 20;
+        const innerW = svgW - padX * 2;
+        const innerH = svgH - padY - 20;
+        
+        const maxRank = Math.max(...rankTrend.map(t => t.total), 10);
+        
+        let pts = rankTrend.map((t, i) => {
+            const x = rankTrend.length === 1 ? padX + innerW / 2 : padX + (i / (rankTrend.length - 1)) * innerW;
+            const y = padY + ((t.rank - 1) / (maxRank - 1 || 1)) * innerH;
+            return { x, y, ...t };
+        });
+        
+        let pathD = '';
+        pts.forEach((p, i) => {
+            if (i === 0) pathD += `M ${p.x} ${p.y}`;
+            else pathD += ` L ${p.x} ${p.y}`;
+        });
+        
+        let areaD = `M ${pts[0].x} ${padY + innerH} `;
+        pts.forEach(p => { areaD += `L ${p.x} ${p.y} `; });
+        areaD += `L ${pts[pts.length-1].x} ${padY + innerH} Z`;
+        
+        let svgHtml = `<svg class="ana-rank-chart" viewBox="0 0 ${svgW} ${svgH}" preserveAspectRatio="xMidYMid meet" style="width: ${svgW}px; max-width: 100%;">`;
+        
+        for (let i = 0; i <= 2; i++) {
+            const y = padY + (i / 2) * innerH;
+            svgHtml += `<line x1="${padX}" y1="${y}" x2="${svgW - padX}" y2="${y}" stroke="#E2E6ED" stroke-width="1" stroke-dasharray="3" />`;
+            const rankLabel = Math.round(1 + (i / 2) * (maxRank - 1));
+            svgHtml += `<text x="${padX - 6}" y="${y + 4}" font-size="10" fill="#999" text-anchor="end">第${rankLabel}</text>`;
+        }
+        
+        svgHtml += `<path d="${areaD}" fill="rgba(255, 149, 0, 0.1)" />`;
+        svgHtml += `<path d="${pathD}" fill="none" stroke="#FF9500" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />`;
+        
+        pts.forEach(p => {
+            svgHtml += `<circle cx="${p.x}" cy="${p.y}" r="4" fill="#fff" stroke="#FF9500" stroke-width="2" />`;
+            svgHtml += `<text x="${p.x}" y="${p.y - 8}" font-size="11" font-weight="bold" fill="#FF9500" text-anchor="middle">${p.rank}</text>`;
+            svgHtml += `<text x="${p.x}" y="${svgH - 4}" font-size="10" fill="#999" text-anchor="middle">${(p.date || '').slice(5)}</text>`;
+        });
+        
+        svgHtml += `</svg>`;
+        
+        html += '<div class="ana-rank-chart-wrap">';
+        html += svgHtml;
+        html += '</div>';
+    }
+
+    $('#analysisBody').innerHTML = html;
+    $('#anaTitle').textContent = stu.name + ' · ' + getSubjectName(currentSubject) + '分析';
+    openModal('analysisModal');
+}
+
+/* ==========================================================================
+   10. 成绩统计弹窗
+   ========================================================================== */
+function renderStatsModal() {
+    const stat  = getStat();
+    const fails = state.students.filter(
+        s => s.scores && isValidScore(s.scores[currentSubject]) && s.scores[currentSubject] < state.passLine
+    );
+
+    $('#statAvg').textContent    = stat.count ? stat.avg.toFixed(1) : '--';
+    $('#statMaxMin').textContent = stat.count ? (stat.max + ' / ' + stat.min) : '-- / --';
+    $('#statPass').textContent   = stat.pass;
+    $('#statFail').textContent   = stat.fail;
+    $('#passLineInput').value    = state.passLine;
+
+    $$('#statsSortTabs .sort-tab').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.sort === statsSortBy);
+    });
+
+    const sorted = sortStudents(state.students, statsSortBy);
+    const rankMap = getRankMap();
+    
+    const viewStudents = sorted.map(s => ({
+        id: s.id, sid: s.sid, name: s.name, 
+        score: s.scores ? s.scores[currentSubject] : null
+    }));
+    
+    renderScoreList($('#allScoreList'), viewStudents, rankMap, false, state.passLine);
+
+    const fl = $('#failList');
+    fl.innerHTML = '';
+    if (!fails.length) {
+        fl.innerHTML = '<span style="color:#34C759; font-size:14px;">全员及格，太棒啦！</span>';
+    } else {
+        fails.forEach(s => {
+            const span = document.createElement('span');
+            span.className = 'fail-tag';
+            span.textContent = s.name + ' (' + s.scores[currentSubject] + ')';
+            fl.appendChild(span);
+        });
+    }
+}
+
+/* ==========================================================================
+   11. 历史记录详情弹窗
+   ========================================================================== */
+function showHistoryDetail(id) {
+    const h = state.history.find(item => item.id === id);
+    if (!h) return;
+
+    currentHistoryItem = h;
+    historyDetailSortBy = 'score';
+    historyDetailSubject = currentSubject;
+    renderHistoryDetail();
+    openModal('historyDetailModal');
+}
+
+function renderHistoryDetail() {
+    const h = currentHistoryItem;
+    if (!h) return;
+
+    const subj = historyDetailSubject;
+
+    const viewRecords = (h.records || []).map(r => ({
+        sid: r.sid,
+        name: r.name,
+        score: r.scores ? r.scores[subj] : null
+    }));
+
+    const valid = viewRecords.filter(r => isValidScore(r.score));
+    const vals  = valid.map(r => r.score);
+    const sum   = vals.reduce((a, b) => a + b, 0);
+
+    const avg = vals.length ? (sum / vals.length).toFixed(1) : '--';
+    const max = vals.length ? Math.max.apply(null, vals) : '--';
+    const min = vals.length ? Math.min.apply(null, vals) : '--';
+    const pass = vals.filter(v => v >= state.passLine).length;
+    const fail = vals.length - pass;
+
+    const sorted  = sortRecords(viewRecords, historyDetailSortBy);
+    const rankMap = getRankMapForRecords(viewRecords);
+
+    let html = '';
+
+    html += '<div style="margin-bottom:14px; overflow-x:auto;">';
+    html += '  <div class="sort-tabs" id="hdSubjTabs" style="display:inline-flex;">';
+    SUBJECTS.forEach(s => {
+        html += '    <button class="sort-tab' + (subj === s.key ? ' active' : '') + '" data-hsubj="' + s.key + '" type="button">' + s.name + '</button>';
+    });
+    html += '  </div>';
+    html += '</div>';
+
+    html += '<div class="stat-grid" style="margin-bottom:14px;">';
+    html += '  <div class="stat-card"><div class="label">平均分</div><div class="value">' + avg + '</div></div>';
+    html += '  <div class="stat-card"><div class="label">最高 / 最低</div><div class="value" style="font-size:16px;">' + max + ' / ' + min + '</div></div>';
+    html += '  <div class="stat-card"><div class="label">及格人数</div><div class="value green">' + pass + '</div></div>';
+    html += '  <div class="stat-card"><div class="label">不及格人数</div><div class="value red">' + fail + '</div></div>';
+    html += '</div>';
+
+    html += '<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; gap:8px;">';
+    html += '  <div style="font-size:14px; font-weight:bold;">成绩明细</div>';
+    html += '  <div class="sort-tabs" id="hdSortTabs">';
+    html += '    <button class="sort-tab' + (historyDetailSortBy === 'score' ? ' active' : '') + '" data-hsort="score" type="button">按分数</button>';
+    html += '    <button class="sort-tab' + (historyDetailSortBy === 'sid' ? ' active' : '') + '" data-hsort="sid" type="button">按学号</button>';
+    html += '    <button class="sort-tab' + (historyDetailSortBy === 'name' ? ' active' : '') + '" data-hsort="name" type="button">按姓名</button>';
+    html += '  </div>';
+    html += '</div>';
+
+    html += '<div id="hdList" class="all-score-list" style="max-height:40vh;"></div>';
+
+    $('#hdTitle').textContent = (h.title || '未命名记录') + ' · ' + (h.date || '');
+    $('#hdBody').innerHTML = html;
+
+    renderScoreList($('#hdList'), sorted, rankMap, true, state.passLine);
+
+    $$('#hdSubjTabs .sort-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+            historyDetailSubject = btn.dataset.hsubj;
+            renderHistoryDetail();
+        });
+    });
+
+    $$('#hdSortTabs .sort-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+            historyDetailSortBy = btn.dataset.hsort;
+            renderHistoryDetail();
+        });
+    });
+}
+
+/* ==========================================================================
+   12. 事件绑定与初始化
+   ========================================================================== */
+
+/* ---------- 12.1 学科切换 ---------- */
+$$('.subj-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+        currentSubject = btn.dataset.subj;
+        $$('.subj-tab').forEach(b => b.classList.toggle('active', b === btn));
+        selectedStudentId = null;
+        cancelBatch();
+        render();
+    });
+});
+
+/* ---------- 12.2 撤销 ---------- */
+$('#btnUndo').addEventListener('click', () => {
+    if (undoStack.length === 0) {
+        toast('没有可以撤销的操作');
+        return;
+    }
+    state.students = JSON.parse(undoStack.pop());
+    selectedStudentId = null;
+    cancelBatch();
+    save();
+    toast('已撤销上一步');
+});
+
+/* ---------- 12.3 开始 / 结束登分 ---------- */
+$('#btnStart').addEventListener('click', () => {
+    isStarted = !isStarted;
+    const btn = $('#btnStart');
+
+    if (isStarted) {
+        btn.textContent = '结束登分';
+        btn.classList.add('active');
+        toast('已开启登分模式');
+    } else {
+        btn.textContent = '开始登分';
+        btn.classList.remove('active');
+        cancelBatch();
+        selectedStudentId = null;
+        render();
+    }
+});
+
+/* ---------- 12.4 菜单 ---------- */
+$('#btnMenu').addEventListener('click', () => openModal('menuModal'));
+
+document.addEventListener('click', e => {
+    const el = e.target.closest('[data-close]');
+    if (el) closeModal(el.dataset.close);
+});
+
+$('#topTitle').addEventListener('click', showOverview);
+$('#ovClose').addEventListener('click', () => closeModal('overviewModal'));
+
+/* ---------- 12.5 本次成绩总览 ---------- */
+$('#menuOverview').addEventListener('click', () => {
+    closeModal('menuModal');
+    showOverview();
+});
+
+/* ---------- 12.6 统计与不及格名单 ---------- */
+$('#menuStats').addEventListener('click', () => {
+    closeModal('menuModal');
+    $('#statsTitle').textContent = '成绩统计 · ' + getSubjectName(currentSubject);
+    renderStatsModal();
+    openModal('statsModal');
+});
+
+$('#statsSortTabs').addEventListener('click', e => {
+    const btn = e.target.closest('.sort-tab');
+    if (!btn) return;
+    statsSortBy = btn.dataset.sort;
+    renderStatsModal();
+});
+
+/* ---------- 12.7 修改及格线 ---------- */
+$('#passLineInput').addEventListener('change', e => {
+    let val = parseFloat(e.target.value);
+    if (isNaN(val) || val < 0 || val > 100) val = 60;
+
+    state.passLine = val;
+    save();
+
+    initScoreGrid();
+    render();
+    renderStatsModal();
+});
+
+/* ---------- 12.8 保存本次记录 ---------- */
+$('#menuSave').addEventListener('click', () => {
+    closeModal('menuModal');
+
+    const hasAnyScore = state.students.some(s => s.scores && SUBJECTS.some(sub => isValidScore(s.scores[sub.key])));
+    if (!hasAnyScore) {
+        toast('当前没有录入任何分数');
+        return;
+    }
+
+    $('#recordTitleInput').value = '';
+    $('#recordDateInput').value  = todayStr();
+    openModal('saveModal');
+});
+
+$('#btnConfirmSave').addEventListener('click', () => {
+    const title = $('#recordTitleInput').value.trim() || '未命名测试';
+
+    const records = state.students.map(s => ({
+        sid: s.sid,
+        name: s.name,
+        scores: { ...s.scores }
+    }));
+
+    state.history.unshift({
+        id: Date.now(),
+        date: todayStr(),
+        title: title,
+        records: records
+    });
+
+    save();
+    closeModal('saveModal');
+    toast('保存成功');
+});
+
+/* ---------- 12.9 历史记录列表 ---------- */
+$('#menuHistory').addEventListener('click', () => {
+    closeModal('menuModal');
+    renderHistoryList();
+    openModal('historyModal');
+});
+
+function renderHistoryList() {
+    const box = $('#historyListBody');
+    box.innerHTML = '';
+
+    if (state.history.length === 0) {
+        box.innerHTML = '<div style="text-align:center; color:#999; padding:20px;">暂无历史记录</div>';
+        return;
+    }
+
+    state.history.forEach(h => {
+        const row = document.createElement('div');
+        row.className = 'his-row';
+        row.innerHTML =
+            '<div class="his-info">' +
+                '<div class="his-title">' + esc(h.title) + '</div>' +
+                '<div class="his-date">' + esc(h.date) + ' · 存档 ' + h.records.length + ' 人</div>' +
+            '</div>' +
+            '<button class="his-view" type="button">查看</button>' +
+            '<button class="his-del" type="button">删除</button>';
+
+        row.querySelector('.his-info').addEventListener('click', () => {
+            closeModal('historyModal');
+            showHistoryDetail(h.id);
+        });
+        row.querySelector('.his-view').addEventListener('click', () => {
+            closeModal('historyModal');
+            showHistoryDetail(h.id);
+        });
+
+        row.querySelector('.his-del').addEventListener('click', () => {
+            if (confirm('确定删除这条记录吗？')) {
+                state.history = state.history.filter(item => item.id !== h.id);
+                save();
+                renderHistoryList();
+            }
+        });
+
+        box.appendChild(row);
+    });
+}
+
+/* ---------- 12.10 历史详情：导出 CSV ---------- */
+$('#btnHDExport').addEventListener('click', () => {
+    const h = currentHistoryItem;
+    if (!h) return;
+
+    exportTable(h.records, '历史成绩_' + String(h.title || '记录').replace(/[\\/:*?"<>|]/g, '_') + '_' + h.date);
+    toast('已导出成绩表格');
+});
+
+/* ---------- 12.11 导出当前 CSV ---------- */
+$('#menuExport').addEventListener('click', () => {
+    closeModal('menuModal');
+    exportTable(state.students, '班级总成绩_' + todayStr());
+    toast('成绩表格已导出');
+});
+
+/* ---------- 12.12 名单管理 ---------- */
+$('#menuRoster').addEventListener('click', () => {
+    closeModal('menuModal');
+
+    $('#rosterTextarea').value = state.students
+        .map(s => s.sid + ' ' + s.name)
+        .join('\n');
+    $('#rosterCount').textContent = state.students.length;
+
+    openModal('rosterModal');
+});
+
+$('#btnRosterReset').addEventListener('click', () => {
+    if (confirm('将名单恢复为初始的默认名单，当前名单内容会被覆盖，确定吗？')) {
+        $('#rosterTextarea').value = DEFAULT_NAMES
+            .map((name, i) => String(i + 1).padStart(2, '0') + ' ' + name)
+            .join('\n');
+    }
+});
+
+$('#btnSaveRoster').addEventListener('click', () => {
+    const lines = $('#rosterTextarea').value
+        .split('\n')
+        .map(l => l.trim())
+        .filter(l => l.length > 0);
+
+    if (!lines.length) {
+        toast('名单不能为空');
+        return;
+    }
+
+    const oldScoresByName = {};
+    state.students.forEach(s => {
+        if (s.scores) {
+            oldScoresByName[s.name] = { ...s.scores };
+        }
+    });
+
+    const newStudents = lines.map((line, i) => {
+        let sid = '';
+        let name = line;
+
+        const m = line.match(/^(\d+)[\s\.\-、,，:：]+(.+)$/);
+        if (m) {
+            sid  = m[1];
+            name = m[2].trim();
+        }
+        if (!sid) {
+            sid = String(i + 1).padStart(2, '0');
+        }
+
+        const scores = Object.prototype.hasOwnProperty.call(oldScoresByName, name)
+            ? oldScoresByName[name]
+            : { chinese: null, math: null, english: null, science: null };
+
+        return {
+            id: i + 1,
+            sid: sid,
+            name: name,
+            scores: scores
+        };
+    });
+
+    pushUndo();
+
+    state.students = newStudents;
+    selectedStudentId = null;
+    batchSelectedIds = [];
+    batchScore = null;
+
+    save();
+    render();
+    closeModal('rosterModal');
+    toast('名单已更新（共 ' + state.students.length + ' 人）');
+});
+
+/* ---------- 12.13 清空当前学科分数 ---------- */
+$('#menuClear').addEventListener('click', () => {
+    closeModal('menuModal');
+    if (confirm('确定清空当前【' + getSubjectName(currentSubject) + '】所有学生的分数吗？（可撤销）')) {
+        pushUndo();
+        state.students.forEach(s => {
+            if (s.scores) s.scores[currentSubject] = null;
+        });
+        selectedStudentId = null;
+        cancelBatch();
+        save();
+        render();
+        toast('已清空【' + getSubjectName(currentSubject) + '】所有分数');
+    }
+});
+
+/* ---------- 12.14 批量确认 / 取消 ---------- */
+$('#btnConfirmBatch').addEventListener('click', confirmBatch);
+$('#btnCancelBatch').addEventListener('click', cancelBatch);
+
+/* ---------- 12.15 阻止双击缩放 ---------- */
+let lastTouchEnd = 0;
+document.addEventListener('touchend', e => {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) e.preventDefault();
+    lastTouchEnd = now;
+}, { passive: false });
+
+/* ---------- 12.16 启动 ---------- */
+function init() {
+    load();
+    initScoreGrid();
+    render();
+}
+
+init();
+
+})();
+</script>
+</body>
+</html>
