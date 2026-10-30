@@ -2199,7 +2199,7 @@ function showInput(title, label, defaultValue, cb) {
 }
 
 /* ==========================================================================
-   8. 导出（兼容夸克 / iOS 第三方浏览器 / 微信）
+   8. 导出 CSV（简单直连下载版，参考点名 v2）
    ========================================================================== */
 function csvEscape(v) {
     const s = String(v == null ? '' : v);
@@ -2209,153 +2209,10 @@ function csvEscape(v) {
     return s;
 }
 
-/** 是否夸克浏览器 */
-function isQuark() {
-    return /Quark/i.test(navigator.userAgent);
-}
-
-/** 是否 iOS 第三方浏览器 */
-function isIOSThirdParty() {
-    const ua = navigator.userAgent;
-    const isIOS = /iPad|iPhone|iPod/.test(ua);
-    const isThirdParty = /CriOS|FxiOS|OPiOS|Quark|QQBrowser|UCBrowser|MicroMessenger|Weibo|DingTalk|Alipay/i.test(ua);
-    return isIOS && isThirdParty;
-}
-
-/** 是否移动端 */
-function isMobileUA() {
-    return /Android|iPhone|iPad|iPod|Mobile|HarmonyOS/i.test(navigator.userAgent);
-}
-
-/** 微信 / QQ / 钉钉等内置浏览器：文件下载基本被拦截 */
-function isWeChatLike() {
-    return /MicroMessenger|QQ\/|DingTalk|Weibo|AlipayClient/i.test(navigator.userAgent);
-}
-
 /**
- * 兜底方案：把 CSV 内容显示在弹窗里，让用户手动复制
- */
-function showCsvFallback(csv, filename) {
-    const old = document.getElementById('csvFallbackMask');
-    if (old) old.remove();
-
-    const mask = document.createElement('div');
-    mask.id = 'csvFallbackMask';
-    mask.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;display:flex;align-items:flex-end;justify-content:center;';
-
-    const card = document.createElement('div');
-    card.style.cssText = 'width:100%;max-width:600px;background:#fff;border-radius:16px 16px 0 0;padding:16px 16px 24px;max-height:86vh;display:flex;flex-direction:column;box-sizing:border-box;';
-
-    card.innerHTML =
-        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">' +
-            '<b style="font-size:16px;color:#333;">导出成绩</b>' +
-            '<button type="button" data-csv-close style="width:34px;height:34px;border-radius:50%;background:#F0F2F5;color:#888;font-size:20px;line-height:1;">×</button>' +
-        '</div>' +
-        '<p style="font-size:13px;line-height:1.7;color:#666;margin:0 0 10px;">' +
-            '当前浏览器不支持直接下载文件。已生成表格内容（CSV），请点击下方 <b style="color:#4A90E2;">【复制全部】</b>，再粘贴到微信、备忘录或 Excel 中保存。' +
-        '</p>' +
-        '<textarea readonly style="flex:1;min-height:200px;max-height:50vh;width:100%;border:1px solid #E2E6ED;border-radius:10px;padding:10px;font-size:12px;line-height:1.5;background:#FAFBFC;color:#333;resize:none;font-family:Menlo,Consolas,monospace;box-sizing:border-box;-webkit-user-select:text;user-select:text;"></textarea>' +
-        '<div style="display:flex;gap:10px;margin-top:14px;">' +
-            '<button type="button" data-csv-copy style="flex:1;height:46px;border-radius:10px;background:#4A90E2;color:#fff;font-size:15px;font-weight:bold;">复制全部</button>' +
-            '<button type="button" data-csv-close style="flex:1;height:46px;border-radius:10px;background:#F0F2F5;color:#333;font-size:15px;font-weight:bold;">关闭</button>' +
-        '</div>';
-
-    mask.appendChild(card);
-    document.body.appendChild(mask);
-
-    const ta = card.querySelector('textarea');
-    ta.value = csv;
-
-    mask.addEventListener('click', e => {
-        if (e.target === mask || e.target.hasAttribute('data-csv-close')) {
-            mask.remove();
-        }
-    });
-
-    card.querySelector('[data-csv-copy]').addEventListener('click', () => {
-        ta.focus();
-        ta.select();
-        ta.setSelectionRange(0, csv.length);
-
-        let ok = false;
-        try {
-            ok = document.execCommand('copy');
-        } catch (e) {}
-
-        if (ok) {
-            toast('已复制到剪贴板');
-        } else if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(csv).then(
-                () => toast('已复制到剪贴板'),
-                () => toast('复制失败，请长按文本框手动选择复制')
-            );
-        } else {
-            toast('复制失败，请长按文本框手动选择复制');
-        }
-    });
-}
-
-/**
- * 触发下载
- * @returns {'direct'|'window'|false}
- */
-function downloadBlob(blob, filename) {
-    let url;
-    try {
-        url = URL.createObjectURL(blob);
-    } catch (e) {
-        return false;
-    }
-
-    // 微信 / QQ / 钉钉等内置浏览器：直接走兜底
-    if (isWeChatLike()) {
-        try { URL.revokeObjectURL(url); } catch (e) {}
-        return false;
-    }
-
-    // 夸克 / iOS 第三方浏览器：新窗口打开，用户手动保存
-    if (isQuark() || isIOSThirdParty()) {
-        let win = null;
-        try {
-            win = window.open(url, '_blank');
-        } catch (e) {}
-        if (!win) {
-            try { URL.revokeObjectURL(url); } catch (e) {}
-            return false;
-        }
-        setTimeout(() => {
-            try { URL.revokeObjectURL(url); } catch (e) {}
-        }, 120000);
-        return 'window';
-    }
-
-    // 标准浏览器：a.download
-    try {
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        a.rel = 'noopener';
-        a.style.position = 'fixed';
-        a.style.left = '-9999px';
-        a.style.top = '0';
-        document.body.appendChild(a);
-        a.click();
-
-        // 关键：不能立即移除，否则 Safari / 部分安卓浏览器会中断下载
-        setTimeout(() => {
-            try { document.body.removeChild(a); } catch (e) {}
-            try { URL.revokeObjectURL(url); } catch (e) {}
-        }, 5000);
-
-        return 'direct';
-    } catch (e) {
-        try { URL.revokeObjectURL(url); } catch (e2) {}
-        return false;
-    }
-}
-
-/**
- * 导出表格（统一入口，内部负责提示，调用方不需要再 toast）
+ * 导出表格
+ * @param {Array} records 学生记录数组
+ * @param {string} filenamePrefix 文件名前缀（不含 .csv）
  */
 function exportTable(records, filenamePrefix) {
     const dateStr = todayStr();
@@ -2372,46 +2229,20 @@ function exportTable(records, filenamePrefix) {
     });
 
     const csv = '\ufeff' + rows.map(row => row.map(csvEscape).join(',')).join('\r\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const filename = filenamePrefix + '.csv';
 
-    // 1) 移动端优先尝试系统分享（体验最好）
-    if (isMobileUA() && navigator.share && navigator.canShare) {
-        let shared = false;
-        try {
-            const file = new File([blob], filename, { type: 'text/csv' });
-            if (navigator.canShare({ files: [file] })) {
-                shared = true;
-                navigator.share({ files: [file], title: filenamePrefix })
-                    .then(() => {})
-                    .catch(err => {
-                        // 用户主动取消 → 不处理
-                        if (err && err.name === 'AbortError') return;
-                        // 分享失败 → 回退下载
-                        const mode = downloadBlob(blob, filename);
-                        if (mode === 'direct') {
-                            toast('成绩表格已导出');
-                        } else if (mode === 'window') {
-                            toast('已在新窗口打开，请长按 / 通过菜单保存');
-                        } else {
-                            showCsvFallback(csv, filename);
-                        }
-                    });
-            }
-        } catch (e) {
-            shared = false;
-        }
-        if (shared) return;
-    }
-
-    // 2) 普通下载
-    const mode = downloadBlob(blob, filename);
-    if (mode === 'direct') {
-        toast('成绩表格已导出');
-    } else if (mode === 'window') {
-        toast('已在新窗口打开，请长按 / 通过菜单保存');
-    } else {
-        showCsvFallback(csv, filename);
+    try {
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filenamePrefix + '.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1500);
+        toast('CSV已导出（用Excel查看）');
+    } catch (e) {
+        toast('导出失败');
     }
 }
 
